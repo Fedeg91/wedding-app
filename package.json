@@ -1,0 +1,46 @@
+{
+  "name": "wedding-photo-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+    ,"production:audit": "node --env-file=.env.local scripts/production/audit.mjs"
+    ,"load:seed": "node --env-file=.env.local scripts/load-test/seed.mjs"
+    ,"load:cleanup": "node --env-file=.env.local scripts/load-test/cleanup.mjs"
+    ,"load:verify-pagination": "node scripts/load-test/verify-pagination.mjs"
+    ,"load:qr": "k6 run load-tests/qr-burst.js"
+    ,"load:feed": "k6 run load-tests/feed-scroll.js"
+    ,"load:guests": "k6 run load-tests/guest-onboarding.js"
+    ,"load:signatures": "k6 run load-tests/upload-signature.js"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "latest",
+    "@supabase/supabase-js": "^2.112.3",
+    "@tanstack/react-query": "^5.101.4",
+    "class-variance-authority": "latest",
+    "cloudinary": "^2.10.0",
+    "clsx": "latest",
+    "lucide-react": "latest",
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "tailwind-merge": "latest",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "latest",
+    "@types/node": "latest",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "eslint": "latest",
+    "eslint-config-next": "latest",
+    "tailwindcss": "latest",
+    "typescript": "latest",
+    "vitest": "^4.1.10"
+  }
+}
