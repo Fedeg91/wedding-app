@@ -2,7 +2,7 @@
 
 import { ChangeEvent, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ImagePlus, Plus, Upload } from "lucide-react";
+import { CheckCircle2, ImagePlus, Plus, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import type { CloudinaryUploadResult } from "@/features/photos/cloudinary/types";
@@ -14,7 +14,7 @@ import { nextQueuedIds, type QueueStatus } from "@/features/photos/upload/queue"
 
 export type UploadQueueItem = { id: string; clientUploadId: string; uploadGroupId: string; uploadGroupCreatedAt: string; uploadGroupPosition: number; file: File; previewUrl: string; status: QueueStatus; progress: number; error?: string; cloudinaryResult?: CloudinaryUploadResult };
 
-export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: boolean; onOpenChange: (open: boolean) => void; eventSlug: string; guestId: string }) {
+export function UploadSheet({ open, onOpenChange, eventSlug, guestId, onViewPost }: { open: boolean; onOpenChange: (open: boolean) => void; eventSlug: string; guestId: string; onViewPost?: () => void }) {
   const queryClient = useQueryClient();
   const [items, setItems] = useState<UploadQueueItem[]>([]);
   const [caption, setCaption] = useState("");
@@ -97,6 +97,7 @@ export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: 
 
   const canUpload = items.some((item) => item.status === "selected" || item.status === "failed");
   const successful = items.filter((item) => item.status === "success").length;
+  const complete = items.length > 0 && successful === items.length;
   return (
     <Dialog open={open} onOpenChange={close}>
       <DialogContent>
@@ -109,7 +110,7 @@ export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: 
         </div>
         {selectionError && <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs leading-relaxed text-red-700" role="alert">{selectionError}</p>}
         <label className="mt-4 block"><span className="mb-2 block text-sm font-semibold text-stone-700">Didascalia <span className="font-normal text-stone-400">(opzionale)</span></span><textarea value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Racconta questo momento…" maxLength={240} rows={2} className="w-full resize-none rounded-xl border border-stone-200 px-4 py-3 text-base outline-none focus:border-rose-400 focus:ring-2 focus:ring-rose-100" disabled={busy || items.some((item) => item.status === "success")} /></label>
-        <Button className="mt-4 w-full" disabled={!canUpload || busy || !online} onClick={() => void uploadPending()}><Upload className="size-4" />{busy ? "Caricamento in corso…" : items.some((item) => item.status === "failed") ? "Riprova foto non riuscite" : `Condividi ${items.length} ${items.length === 1 ? "foto" : "foto"}`}</Button>
+        {complete ? <div className="mt-4 rounded-2xl bg-emerald-50 p-4 text-center"><CheckCircle2 className="mx-auto size-8 text-emerald-600" /><p className="mt-2 font-semibold text-emerald-900">{items.length === 1 ? "La tua foto è online ✨" : `Le tue ${items.length} foto sono online ✨`}</p><Button className="mt-3 w-full" onClick={() => { close(false); onViewPost?.(); }}>Visualizza il post</Button></div> : <Button className="mt-4 w-full" disabled={!canUpload || busy || !online} onClick={() => void uploadPending()}><Upload className="size-4" />{busy ? "Caricamento in corso…" : items.some((item) => item.status === "failed") ? "Riprova foto non riuscite" : `Condividi ${items.length} ${items.length === 1 ? "foto" : "foto"}`}</Button>}
       </DialogContent>
     </Dialog>
   );

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Camera, Images, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowUp, Camera, Images, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getEvent } from "@/features/events/api";
 import { changeGuestNickname, getGuests, registerGuest } from "@/features/guests/api";
@@ -35,11 +35,13 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoFeedItem | null>(null);
   const [online, setOnline] = useState(true);
+  const [showLatest, setShowLatest] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
 
   const eventQuery = useQuery({ queryKey: ["event", eventSlug], queryFn: () => getEvent(eventSlug), staleTime: 5_000, gcTime: 10 * 60_000, refetchOnWindowFocus: true, refetchInterval: 30_000 });
   const guestsQuery = useQuery({ queryKey: ["guests", eventSlug], queryFn: () => getGuests(eventSlug), enabled: eventQuery.isSuccess, staleTime: 60_000, gcTime: 10 * 60_000 });
   useEffect(() => { const update = () => setOnline(navigator.onLine); update(); window.addEventListener("online", update); window.addEventListener("offline", update); return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); }; }, []);
+  useEffect(() => { const update = () => setShowLatest(window.scrollY > 700); update(); window.addEventListener("scroll", update, { passive: true }); return () => window.removeEventListener("scroll", update); }, []);
 
   useEffect(() => {
     const hydrate = window.setTimeout(() => {
@@ -137,8 +139,9 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
         {photosQuery.isFetchNextPageError && <div className="px-4 py-5 text-center"><p className="text-sm text-stone-500">Non siamo riusciti a caricare altre foto.</p><Button className="mt-3" variant="outline" onClick={() => void photosQuery.fetchNextPage()}><RefreshCw className="size-4" />Riprova</Button></div>}
         <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
       </main>
+      {showLatest && <Button variant="outline" className="fixed left-1/2 top-20 z-40 -translate-x-1/2 rounded-full bg-white/95 shadow-lg backdrop-blur" onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); void photosQuery.refetch(); }}><ArrowUp className="size-4" />Ultime foto</Button>}
       {event.uploadEnabled ? <div className="safe-bottom pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center bg-linear-to-t from-[#faf9f7] via-[#faf9f7]/95 to-transparent px-4 pb-4 pt-8"><Button className="pointer-events-auto min-h-14 w-full max-w-sm text-base shadow-[0_10px_30px_rgba(244,63,94,0.28)]" onClick={() => setUploadOpen(true)}><Camera className="size-5" />Aggiungi foto</Button></div> : <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 bg-[#faf9f7]/95 px-4 pb-4 pt-3 text-center text-sm text-stone-500 backdrop-blur">Gli sposi hanno disattivato nuovi caricamenti.</div>}
-      <UploadSheet open={uploadOpen} onOpenChange={setUploadOpen} eventSlug={eventSlug} guestId={guest.id} />
+      <UploadSheet open={uploadOpen} onOpenChange={setUploadOpen} eventSlug={eventSlug} guestId={guest.id} onViewPost={() => { window.scrollTo({ top: 0, behavior: "smooth" }); void photosQuery.refetch(); }} />
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} guest={guest} onSave={saveNickname} />
       <PhotoLightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
     </div>
