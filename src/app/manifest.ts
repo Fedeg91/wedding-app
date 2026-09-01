@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: "/e/alessandro-anna",
     display: "standalone",
     background_color: "#faf9f7",
-    theme_color: "#fffaf8",
+    theme_color: "#f43f5e",
     orientation: "portrait",
   };
 }
