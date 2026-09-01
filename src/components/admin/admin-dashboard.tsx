@@ -48,6 +48,7 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortOrder>("newest");
+  const [adminTab, setAdminTab] = useState<"photos" | "awards">("photos");
   const [awardGuestId, setAwardGuestId] = useState("");
   const [awardMessage, setAwardMessage] = useState("Hai vinto un premio!");
   const moreRef = useRef<HTMLDivElement>(null);
@@ -63,9 +64,10 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     staleTime: 10_000,
+    enabled: adminTab === "photos",
   });
   const guestsQuery = useQuery({ queryKey: ["guests", eventSlug], queryFn: () => getGuests(eventSlug), staleTime: 60_000 });
-  const awardsQuery = useQuery({ queryKey: ["admin-awards", eventSlug], queryFn: () => getAdminAwards(eventSlug), refetchInterval: 30_000, refetchOnWindowFocus: true });
+  const awardsQuery = useQuery({ queryKey: ["admin-awards", eventSlug], queryFn: () => getAdminAwards(eventSlug), enabled: adminTab === "awards", refetchInterval: 30_000, refetchOnWindowFocus: true });
   const award = useMutation({
     mutationFn: () => sendGuestAward(eventSlug, awardGuestId, awardMessage),
     onSuccess: async () => { setAwardMessage("Hai vinto un premio!"); await queryClient.invalidateQueries({ queryKey: ["admin-awards", eventSlug] }); },
@@ -205,7 +207,8 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
             dangerous
           />
         </section>
-        <section className="rounded-2xl bg-white p-5 shadow-sm">
+        <nav className="grid grid-cols-2 rounded-2xl bg-white p-1.5 shadow-sm" aria-label="Sezioni amministrazione"><button type="button" onClick={() => setAdminTab("photos")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition-colors ${adminTab === "photos" ? "bg-rose-500 text-white" : "text-stone-500 hover:bg-stone-50"}`} aria-current={adminTab === "photos" ? "page" : undefined}><ImageIcon className="mr-2 inline size-4" />Moderazione foto</button><button type="button" onClick={() => setAdminTab("awards")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition-colors ${adminTab === "awards" ? "bg-amber-500 text-white" : "text-stone-500 hover:bg-stone-50"}`} aria-current={adminTab === "awards" ? "page" : undefined}><Trophy className="mr-2 inline size-4" />Premi</button></nav>
+        {adminTab === "awards" && <section className="rounded-2xl bg-white p-5 shadow-sm">
           <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Trophy className="size-5" /></div><div><h2 className="font-serif text-xl">Premio invitato</h2><p className="text-sm text-stone-500">Invia un messaggio privato a un singolo invitato.</p></div></div>
           <div className="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_auto]">
             <select value={awardGuestId} onChange={(event) => setAwardGuestId(event.target.value)} className="min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm" aria-label="Invitato destinatario"><option value="">Scegli invitato</option>{(guestsQuery.data?.items ?? []).map((item) => <option value={item.id} key={item.id}>{item.nickname}</option>)}</select>
@@ -214,8 +217,8 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
           </div>
           <p className={`mt-3 text-sm ${award.isError ? "text-red-600" : "text-emerald-700"}`} role="status">{award.isSuccess ? "Premio inviato: apparirà nell’app dell’invitato." : award.isError ? "Invio non riuscito. Riprova." : "Il messaggio sarà mostrato una sola volta e poi segnato come letto."}</p>
           {(awardsQuery.data?.items.length ?? 0) > 0 && <div className="mt-5 space-y-2 border-t border-stone-100 pt-4"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-stone-700">Ultimi premi</h3><button type="button" className="text-xs font-semibold text-rose-600" onClick={() => void awardsQuery.refetch()}>Aggiorna</button></div>{awardsQuery.data!.items.map((item) => { const status = item.deliveredAt ? "Consegnato" : item.claimedAt ? "Sta arrivando!" : item.readAt ? "Visualizzato" : "Inviato"; return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-3" key={item.id}><div><p className="text-sm font-semibold">{item.guest.nickname}</p><p className="text-xs text-stone-500">{item.message}</p></div><div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.claimedAt && !item.deliveredAt ? "animate-pulse bg-amber-100 text-amber-800" : item.deliveredAt ? "bg-emerald-100 text-emerald-700" : "bg-stone-200 text-stone-600"}`}>{status}</span>{item.claimedAt && !item.deliveredAt && <Button size="sm" disabled={delivery.isPending} onClick={() => delivery.mutate(item.id)}>Consegnato</Button>}</div></div>; })}</div>}
-        </section>
-        <section>
+        </section>}
+        {adminTab === "photos" && <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="font-serif text-2xl">Moderazione foto</h2>
             <div className="flex flex-wrap gap-2">
@@ -323,7 +326,7 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
               Caricamento altre foto…
             </p>
           )}
-        </section>
+        </section>}
       </main>
     </div>
   );

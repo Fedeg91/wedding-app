@@ -38,6 +38,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
   const [selectedPhoto, setSelectedPhoto] = useState<PhotoFeedItem | null>(null);
   const [online, setOnline] = useState(true);
   const [showLatest, setShowLatest] = useState(false);
+  const [audioReady, setAudioReady] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const soundedAwardRef = useRef<string | null>(null);
@@ -47,8 +48,14 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
   useEffect(() => { const update = () => setOnline(navigator.onLine); update(); window.addEventListener("online", update); window.addEventListener("offline", update); return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); }; }, []);
   useEffect(() => { const update = () => setShowLatest(window.scrollY > 700); update(); window.addEventListener("scroll", update, { passive: true }); return () => window.removeEventListener("scroll", update); }, []);
   useEffect(() => {
-    const unlock = () => { if (!audioContextRef.current) audioContextRef.current = new AudioContext(); void audioContextRef.current.resume(); };
-    window.addEventListener("pointerdown", unlock, { once: true });
+    const unlock = () => {
+      try {
+        if (!audioContextRef.current) audioContextRef.current = new AudioContext();
+        const context = audioContextRef.current;
+        void context.resume().then(() => setAudioReady(context.state === "running")).catch(() => undefined);
+      } catch { /* Il popup resta disponibile se il browser non supporta Web Audio. */ }
+    };
+    window.addEventListener("pointerdown", unlock);
     return () => { window.removeEventListener("pointerdown", unlock); void audioContextRef.current?.close(); audioContextRef.current = null; };
   }, []);
 
@@ -112,7 +119,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
     soundedAwardRef.current = awardId;
     const start = context.currentTime;
     [659.25, 783.99, 1046.5].forEach((frequency, index) => { const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.frequency.value = frequency; oscillator.type = "sine"; gain.gain.setValueAtTime(0.0001, start + index * 0.12); gain.gain.exponentialRampToValueAtTime(0.16, start + index * 0.12 + 0.02); gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.12 + 0.3); oscillator.connect(gain).connect(context.destination); oscillator.start(start + index * 0.12); oscillator.stop(start + index * 0.12 + 0.31); });
-  }, [awardQuery.data?.award?.id]);
+  }, [audioReady, awardQuery.data?.award?.id]);
   const likes = useMutation({
     mutationFn: ({ photoId, liked }: { photoId: string; liked: boolean }) => setPhotoLike(eventSlug, photoId, guest!.id, liked),
     onMutate: async ({ photoId, liked }) => {
