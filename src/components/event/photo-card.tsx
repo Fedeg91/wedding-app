@@ -2,13 +2,14 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { Photo } from "@/types";
 
 const formatter = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-export function PhotoCard({ photo, onOpen }: { photo: Photo; onOpen: () => void }) {
+export function PhotoCard({ photo, onOpen, onLike, likePending = false }: { photo: Photo; onOpen: () => void; onLike: () => void; likePending?: boolean }) {
   const [loaded, setLoaded] = useState(false);
   const width = photo.width ?? 1200;
   const height = photo.height ?? 1200;
@@ -19,6 +20,12 @@ export function PhotoCard({ photo, onOpen }: { photo: Photo; onOpen: () => void 
         {!loaded && <Skeleton className="absolute inset-0 rounded-none" />}
         <Image src={photo.imageUrl} alt={photo.caption || `Foto di ${photo.guest.nickname}`} fill sizes="(max-width: 672px) 100vw, 640px" className={cn("object-cover transition-opacity duration-500", loaded ? "opacity-100" : "opacity-0")} onLoad={() => setLoaded(true)} loading="lazy" />
       </button>
+      <div className="px-3 pt-2">
+        <button type="button" onClick={onLike} disabled={likePending} aria-pressed={photo.likedByCurrentGuest} aria-label={photo.likedByCurrentGuest ? "Rimuovi Mi piace" : "Metti Mi piace"} className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full px-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-rose-50 disabled:opacity-60">
+          <Heart className={cn("size-6", photo.likedByCurrentGuest && "fill-rose-500 text-rose-500")} />
+          <span>{photo.likeCount}</span>
+        </button>
+      </div>
       {photo.caption && <p className="px-4 py-4 text-sm leading-relaxed text-stone-700"><span className="mr-2 font-semibold text-stone-900">{photo.guest.nickname}</span>{photo.caption}</p>}
     </article>
   );

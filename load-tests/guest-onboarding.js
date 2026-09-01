@@ -1,8 +1,8 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
-import { baseUrl, duration, eventSlug, record, summaryTrendStats, thresholds, vus } from "./lib/config.js";
+import { baseUrl, eventSlug, record, summaryTrendStats, thresholds, vus } from "./lib/config.js";
 
-export const options = { vus, duration, thresholds, summaryTrendStats };
+export const options = { vus, iterations: vus, thresholds, summaryTrendStats };
 const headers = { "Content-Type": "application/json" };
 
 export default function guestOnboarding() {

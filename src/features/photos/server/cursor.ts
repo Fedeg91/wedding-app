@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const cursorPayloadSchema = z.object({ createdAt: z.iso.datetime({ offset: true }), id: z.uuid() });
+const cursorPayloadSchema = z.object({ createdAt: z.iso.datetime({ offset: true }), id: z.uuid(), likeCount: z.number().int().nonnegative().optional() });
 export type PhotoCursor = z.infer<typeof cursorPayloadSchema>;
 
 export function encodeCursor(cursor: PhotoCursor) {

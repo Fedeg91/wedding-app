@@ -20,6 +20,8 @@ export type PhotoFeedItem = {
   height: number | null;
   caption: string | null;
   createdAt: string;
+  likeCount: number;
+  likedByCurrentGuest: boolean;
   guest: Guest;
 };
 

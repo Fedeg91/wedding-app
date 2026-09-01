@@ -7,7 +7,10 @@ import { Camera, Images, RefreshCw, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getEvent } from "@/features/events/api";
 import { changeGuestNickname, getGuests, registerGuest } from "@/features/guests/api";
-import { getPhotoPage } from "@/features/photos/api";
+import { getPhotoPage, setPhotoLike } from "@/features/photos/api";
+import { updatePhotoLikeInPages } from "@/features/photos/likes-cache";
+import type { InfiniteData } from "@tanstack/react-query";
+import type { PaginatedResponse } from "@/types";
 import { EventHeader } from "./event-header";
 import { GalleryFilters, type SortOrder } from "./gallery-filters";
 import { GallerySkeleton } from "./gallery-skeleton";
@@ -72,13 +75,25 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
 
   const photosQuery = useInfiniteQuery({
     queryKey: ["photos", eventSlug, guestId, sortOrder],
-    queryFn: ({ pageParam }) => getPhotoPage(eventSlug, { guestId: guestId === "all" ? undefined : guestId, sort: sortOrder }, pageParam),
+    queryFn: ({ pageParam }) => getPhotoPage(eventSlug, { guestId: guestId === "all" ? undefined : guestId, currentGuestId: guest?.id, sort: sortOrder }, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     enabled: Boolean(guest && eventQuery.data?.publicGalleryEnabled),
     staleTime: 30_000,
     gcTime: 10 * 60_000,
     refetchOnMount: false,
+  });
+  const likes = useMutation({
+    mutationFn: ({ photoId, liked }: { photoId: string; liked: boolean }) => setPhotoLike(eventSlug, photoId, guest!.id, liked),
+    onMutate: async ({ photoId, liked }) => {
+      await queryClient.cancelQueries({ queryKey: ["photos", eventSlug] });
+      const snapshots = queryClient.getQueriesData<InfiniteData<PaginatedResponse<PhotoFeedItem>>>({ queryKey: ["photos", eventSlug] });
+      queryClient.setQueriesData<InfiniteData<PaginatedResponse<PhotoFeedItem>>>({ queryKey: ["photos", eventSlug] }, (data) => updatePhotoLikeInPages(data, photoId, liked));
+      return { snapshots };
+    },
+    onError: (_error, _variables, context) => {
+      for (const [key, data] of context?.snapshots ?? []) queryClient.setQueryData(key, data);
+    },
   });
   const { fetchNextPage, hasNextPage, isFetchingNextPage } = photosQuery;
 
@@ -117,7 +132,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
       {!online && <div className="sticky top-16 z-30 bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900" role="status">Sei offline. Puoi vedere le foto già caricate, ma serve internet per aggiornare o pubblicare.</div>}
       <GalleryFilters guests={guests} guestId={guestId} sortOrder={sortOrder} onGuestChange={setGuestId} onSortChange={setSortOrder} />
       <main className="mx-auto max-w-2xl space-y-4 py-4 sm:px-4">
-        {photosQuery.isPending ? <GallerySkeleton /> : photosQuery.isError ? <InlineError offline={!online} onRetry={() => void photosQuery.refetch()} /> : photos.length ? photos.map((photo) => <PhotoCard photo={photo} onOpen={() => setSelectedPhoto(photo)} key={photo.id} />) : <div className="px-6 py-24 text-center"><Images className="mx-auto mb-3 size-9 text-stone-300" /><p className="font-semibold text-stone-700">Nessuna foto da mostrare</p><p className="mt-1 text-sm text-stone-400">{guestId === "all" ? "Sii il primo a condividere una foto di oggi." : "Prova a cambiare il filtro."}</p>{guestId === "all" && event.uploadEnabled && <Button className="mt-5" onClick={() => setUploadOpen(true)}><Camera className="size-4" />Condividi la prima foto</Button>}</div>}
+        {photosQuery.isPending ? <GallerySkeleton /> : photosQuery.isError ? <InlineError offline={!online} onRetry={() => void photosQuery.refetch()} /> : photos.length ? photos.map((photo) => <PhotoCard photo={photo} onOpen={() => setSelectedPhoto(photo)} onLike={() => likes.mutate({ photoId: photo.id, liked: !photo.likedByCurrentGuest })} likePending={likes.isPending && likes.variables?.photoId === photo.id} key={photo.id} />) : <div className="px-6 py-24 text-center"><Images className="mx-auto mb-3 size-9 text-stone-300" /><p className="font-semibold text-stone-700">Nessuna foto da mostrare</p><p className="mt-1 text-sm text-stone-400">{guestId === "all" ? "Sii il primo a condividere una foto di oggi." : "Prova a cambiare il filtro."}</p>{guestId === "all" && event.uploadEnabled && <Button className="mt-5" onClick={() => setUploadOpen(true)}><Camera className="size-4" />Condividi la prima foto</Button>}</div>}
         {photosQuery.isFetchingNextPage && <GallerySkeleton />}
         {photosQuery.isFetchNextPageError && <div className="px-4 py-5 text-center"><p className="text-sm text-stone-500">Non siamo riusciti a caricare altre foto.</p><Button className="mt-3" variant="outline" onClick={() => void photosQuery.fetchNextPage()}><RefreshCw className="size-4" />Riprova</Button></div>}
         <div ref={loadMoreRef} className="h-1" aria-hidden="true" />

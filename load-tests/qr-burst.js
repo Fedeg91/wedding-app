@@ -1,8 +1,21 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
-import { baseUrl, duration, eventSlug, record, summaryTrendStats, thresholds, vus } from "./lib/config.js";
+import { baseUrl, eventSlug, record, summaryTrendStats, thresholds, vus } from "./lib/config.js";
 
-export const options = { stages: [{ duration: "15s", target: vus }, { duration, target: vus }, { duration: "5s", target: 0 }], thresholds, summaryTrendStats };
+export const options = {
+  scenarios: {
+    qr_arrivals: {
+      executor: "constant-arrival-rate",
+      rate: vus,
+      timeUnit: "15s",
+      duration: "15s",
+      preAllocatedVUs: vus,
+      maxVUs: vus,
+    },
+  },
+  thresholds,
+  summaryTrendStats,
+};
 
 export default function qrBurst() {
   const urls = [

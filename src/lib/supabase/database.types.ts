@@ -24,9 +24,23 @@ export type Database = {
           { foreignKeyName: "photos_guest_event_fkey"; columns: ["guest_id", "event_id"]; isOneToOne: false; referencedRelation: "guests"; referencedColumns: ["id", "event_id"] },
         ];
       };
+      photo_likes: {
+        Row: { id: string; photo_id: string; guest_id: string; created_at: string };
+        Insert: { id?: string; photo_id: string; guest_id: string; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["photo_likes"]["Insert"]>;
+        Relationships: [
+          { foreignKeyName: "photo_likes_photo_id_fkey"; columns: ["photo_id"]; isOneToOne: false; referencedRelation: "photos"; referencedColumns: ["id"] },
+          { foreignKeyName: "photo_likes_guest_id_fkey"; columns: ["guest_id"]; isOneToOne: false; referencedRelation: "guests"; referencedColumns: ["id"] },
+        ];
+      };
     };
     Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Functions: {
+      list_admin_photos_with_likes: {
+        Args: { target_event_id: string; status_filter: string; sort_order: string; page_limit: number; cursor_created_at?: string | null; cursor_id?: string | null; cursor_like_count?: number | null };
+        Returns: Array<{ id: string; cloudinary_public_id: string | null; mock_image_url: string | null; caption: string | null; created_at: string; status: string; guest_id: string; guest_nickname: string; like_count: number }>;
+      };
+    };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;
   };

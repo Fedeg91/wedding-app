@@ -9,7 +9,8 @@ export const updateGuestSchema = z.object({ nickname: nicknameSchema }).strict()
 export const adminLoginSchema = z.object({ eventSlug: eventSlugSchema, password: z.string().min(1).max(200) }).strict();
 export const adminEventUpdateSchema = z.object({ uploadEnabled: z.boolean().optional(), publicGalleryEnabled: z.boolean().optional() }).strict().refine((value) => value.uploadEnabled !== undefined || value.publicGalleryEnabled !== undefined, "At least one setting is required");
 export const adminPhotoStatusSchema = z.object({ status: z.enum(["published", "hidden"]) }).strict();
-export const adminPhotoQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(50).default(30), cursor: z.string().min(1).optional(), status: z.enum(["published", "hidden", "all"]).default("all") }).strict();
+export const adminPhotoQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(50).default(30), cursor: z.string().min(1).optional(), status: z.enum(["published", "hidden", "all"]).default("all"), sort: z.enum(["newest", "oldest", "most_liked"]).default("newest") }).strict();
+export const photoLikeSchema = z.object({ guestId: uuidSchema }).strict();
 export const uploadSignatureSchema = z.object({ guestId: uuidSchema }).strict();
 export const photoMetadataSchema = z.object({
   guestId: uuidSchema,
@@ -26,5 +27,6 @@ export const photoFeedQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(50).default(20),
   cursor: z.string().min(1).optional(),
   guestId: uuidSchema.optional(),
+  currentGuestId: uuidSchema.optional(),
   sort: z.enum(["newest", "oldest"]).default("newest"),
 }).strict();

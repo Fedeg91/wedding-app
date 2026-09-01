@@ -1,0 +1,15 @@
+import type { InfiniteData } from "@tanstack/react-query";
+import type { PaginatedResponse, PhotoFeedItem } from "@/types";
+
+export function updatePhotoLikeInPages(data: InfiniteData<PaginatedResponse<PhotoFeedItem>> | undefined, photoId: string, liked: boolean) {
+  if (!data) return data;
+  return {
+    ...data,
+    pages: data.pages.map((page) => ({
+      ...page,
+      items: page.items.map((photo) => photo.id === photoId && photo.likedByCurrentGuest !== liked
+        ? { ...photo, likedByCurrentGuest: liked, likeCount: Math.max(0, photo.likeCount + (liked ? 1 : -1)) }
+        : photo),
+    })),
+  };
+}
