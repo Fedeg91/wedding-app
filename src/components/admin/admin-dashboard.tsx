@@ -67,14 +67,43 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
     staleTime: 10_000,
     enabled: adminTab === "photos",
   });
-  const guestsQuery = useQuery({ queryKey: ["guests", eventSlug], queryFn: () => getGuests(eventSlug), staleTime: 60_000 });
-  const awardsQuery = useQuery({ queryKey: ["admin-awards", eventSlug], queryFn: () => getAdminAwards(eventSlug), enabled: adminTab === "awards", refetchInterval: 30_000, refetchOnWindowFocus: true });
+  const guestsQuery = useQuery({
+    queryKey: ["guests", eventSlug],
+    queryFn: () => getGuests(eventSlug),
+    staleTime: 60_000,
+  });
+  const awardsQuery = useQuery({
+    queryKey: ["admin-awards", eventSlug],
+    queryFn: () => getAdminAwards(eventSlug),
+    enabled: adminTab === "awards",
+    refetchInterval: 30_000,
+    refetchOnWindowFocus: true,
+  });
   const award = useMutation({
     mutationFn: () => sendGuestAward(eventSlug, awardGuestId, awardMessage),
-    onSuccess: async () => { setAwardMessage("Hai vinto un premio!"); await queryClient.invalidateQueries({ queryKey: ["admin-awards", eventSlug] }); },
+    onSuccess: async () => {
+      setAwardMessage("Hai vinto un premio!");
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-awards", eventSlug],
+      });
+    },
   });
-  const delivery = useMutation({ mutationFn: (awardId: string) => deliverGuestAward(eventSlug, awardId), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["admin-awards", eventSlug] }); } });
-  const resendAward = useMutation({ mutationFn: (awardId: string) => resendGuestAward(eventSlug, awardId), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["admin-awards", eventSlug] }); } });
+  const delivery = useMutation({
+    mutationFn: (awardId: string) => deliverGuestAward(eventSlug, awardId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-awards", eventSlug],
+      });
+    },
+  });
+  const resendAward = useMutation({
+    mutationFn: (awardId: string) => resendGuestAward(eventSlug, awardId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: ["admin-awards", eventSlug],
+      });
+    },
+  });
   const controls = useMutation({
     mutationFn: (updates: {
       uploadEnabled?: boolean;
@@ -209,126 +238,249 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
             dangerous
           />
         </section>
-        <nav className="grid grid-cols-2 rounded-2xl bg-white p-1.5 shadow-sm" aria-label="Sezioni amministrazione"><button type="button" onClick={() => setAdminTab("photos")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition-colors ${adminTab === "photos" ? "bg-rose-500 text-white" : "text-stone-500 hover:bg-stone-50"}`} aria-current={adminTab === "photos" ? "page" : undefined}><ImageIcon className="mr-2 inline size-4" />Moderazione foto</button><button type="button" onClick={() => setAdminTab("awards")} className={`min-h-11 rounded-xl px-4 text-sm font-bold transition-colors ${adminTab === "awards" ? "bg-amber-500 text-white" : "text-stone-500 hover:bg-stone-50"}`} aria-current={adminTab === "awards" ? "page" : undefined}><Trophy className="mr-2 inline size-4" />Premi</button></nav>
-        {adminTab === "awards" && <section className="rounded-2xl bg-white p-5 shadow-sm">
-          <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Trophy className="size-5" /></div><div><h2 className="font-serif text-xl">Premio invitato</h2><p className="text-sm text-stone-500">Invia un messaggio privato a un singolo invitato.</p></div></div>
-          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_auto]">
-            <select value={awardGuestId} onChange={(event) => setAwardGuestId(event.target.value)} className="min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm" aria-label="Invitato destinatario"><option value="">Scegli invitato</option>{(guestsQuery.data?.items ?? []).map((item) => <option value={item.id} key={item.id}>{item.nickname}</option>)}</select>
-            <input value={awardMessage} onChange={(event) => setAwardMessage(event.target.value)} maxLength={160} className="min-h-11 rounded-xl border border-stone-200 px-3 text-sm" aria-label="Messaggio premio" />
-            <Button disabled={!awardGuestId || !awardMessage.trim() || award.isPending} onClick={() => award.mutate()}><Trophy className="size-4" />{award.isPending ? "Invio…" : "Invia premio"}</Button>
-          </div>
-          <p className={`mt-3 text-sm ${award.isError ? "text-red-600" : "text-emerald-700"}`} role="status">{award.isSuccess ? "Premio inviato: apparirà nell’app dell’invitato." : award.isError ? "Invio non riuscito. Riprova." : "Il messaggio sarà mostrato una sola volta e poi segnato come letto."}</p>
-          {(awardsQuery.data?.items.length ?? 0) > 0 && <div className="mt-5 space-y-2 border-t border-stone-100 pt-4"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-stone-700">Ultimi premi</h3><button type="button" className="text-xs font-semibold text-rose-600" onClick={() => void awardsQuery.refetch()}>Aggiorna</button></div>{awardsQuery.data!.items.map((item) => { const status = item.deliveredAt ? "Consegnato" : item.claimedAt ? "Sta arrivando!" : item.readAt ? "Visualizzato" : "Inviato"; return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-3" key={item.id}><div><p className="text-sm font-semibold">{item.guest.nickname}</p><p className="text-xs text-stone-500">{item.message}</p></div><div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.claimedAt && !item.deliveredAt ? "animate-pulse bg-amber-100 text-amber-800" : item.deliveredAt ? "bg-emerald-100 text-emerald-700" : "bg-stone-200 text-stone-600"}`}>{status}</span>{!item.deliveredAt && <Button size="sm" variant="outline" disabled={resendAward.isPending} onClick={() => resendAward.mutate(item.id)}>Rinvia</Button>}{item.claimedAt && !item.deliveredAt && <Button size="sm" disabled={delivery.isPending} onClick={() => delivery.mutate(item.id)}>Consegnato</Button>}</div></div>; })}</div>}
-        </section>}
-        {adminTab === "photos" && <section>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <h2 className="font-serif text-2xl">Moderazione foto</h2>
-            <div className="flex flex-wrap gap-2">
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value as StatusFilter)}
-                className="min-h-11 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold">
-                <option value="all">Tutte</option>
-                <option value="published">Pubblicate</option>
-                <option value="hidden">Nascoste</option>
-              </select>
-              <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as SortOrder)}
-                className="min-h-11 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold">
-                <option value="newest">Più recenti</option>
-                <option value="oldest">Meno recenti</option>
-                <option value="most_liked">Più apprezzate</option>
-              </select>
+        <nav
+          className="grid grid-cols-2 rounded-2xl bg-white p-1.5 shadow-sm"
+          aria-label="Sezioni amministrazione">
+          <button
+            type="button"
+            onClick={() => setAdminTab("photos")}
+            className={`min-h-11 rounded-xl px-4 text-sm font-bold transition-colors ${adminTab === "photos" ? "bg-rose-500 text-white" : "text-stone-500 hover:bg-stone-50"}`}
+            aria-current={adminTab === "photos" ? "page" : undefined}>
+            <ImageIcon className="mr-2 inline size-4" />
+            Moderazione foto
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdminTab("awards")}
+            className={`min-h-11 rounded-xl px-4 text-sm font-bold transition-colors ${adminTab === "awards" ? "bg-amber-500 text-white" : "text-stone-500 hover:bg-stone-50"}`}
+            aria-current={adminTab === "awards" ? "page" : undefined}>
+            <Trophy className="mr-2 inline size-4" />
+            Premi
+          </button>
+        </nav>
+        {adminTab === "awards" && (
+          <section className="rounded-2xl bg-white p-5 shadow-sm">
+            <div className="flex items-center gap-3">
+              <div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+                <Trophy className="size-5" />
+              </div>
+              <div>
+                <h2 className="font-serif text-xl">Premio invitato</h2>
+                <p className="text-sm text-stone-500">
+                  Invia un messaggio privato a un singolo invitato.
+                </p>
+              </div>
             </div>
-          </div>
-          {photosQuery.isPending ? (
-            <AdminLoading />
-          ) : photosQuery.isError ? (
-            <p className="rounded-2xl bg-white p-8 text-center text-stone-500">
-              Impossibile caricare le foto.
+            <div className="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_auto]">
+              <select
+                value={awardGuestId}
+                onChange={(event) => setAwardGuestId(event.target.value)}
+                className="min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm"
+                aria-label="Invitato destinatario">
+                <option value="">Scegli invitato</option>
+                {(guestsQuery.data?.items ?? []).map((item) => (
+                  <option value={item.id} key={item.id}>
+                    {item.nickname}
+                  </option>
+                ))}
+              </select>
+              <input
+                value={awardMessage}
+                onChange={(event) => setAwardMessage(event.target.value)}
+                maxLength={160}
+                className="min-h-11 rounded-xl border border-stone-200 px-3 text-sm"
+                aria-label="Messaggio premio"
+              />
+              <Button
+                disabled={
+                  !awardGuestId || !awardMessage.trim() || award.isPending
+                }
+                onClick={() => award.mutate()}>
+                <Trophy className="size-4" />
+                {award.isPending ? "Invio…" : "Invia premio"}
+              </Button>
+            </div>
+            <p
+              className={`mt-3 text-sm ${award.isError ? "text-red-600" : "text-emerald-700"}`}
+              role="status">
+              {award.isSuccess
+                ? "Premio inviato: apparirà nell’app dell’invitato."
+                : award.isError
+                  ? "Invio non riuscito. Riprova."
+                  : "Il messaggio sarà mostrato una sola volta e poi segnato come letto."}
             </p>
-          ) : photos.length === 0 ? (
-            <p className="rounded-2xl bg-white p-8 text-center text-stone-500">
-              Nessuna foto in questa sezione.
-            </p>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {photos.map((photo) => (
-                <article
-                  key={photo.id}
-                  className="overflow-hidden rounded-2xl bg-white shadow-sm">
-                  <div className="relative aspect-square bg-stone-200">
-                    <Image
-                      src={photo.thumbnailUrl}
-                      alt={photo.caption || `Foto di ${photo.guest.nickname}`}
-                      fill
-                      sizes="(max-width: 640px) 100vw, 400px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="p-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="truncate font-semibold">
-                          {photo.guest.nickname}
+            {(awardsQuery.data?.items.length ?? 0) > 0 && (
+              <div className="mt-5 space-y-2 border-t border-stone-100 pt-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-stone-700">
+                    Ultimi premi
+                  </h3>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-rose-600"
+                    onClick={() => void awardsQuery.refetch()}>
+                    Aggiorna
+                  </button>
+                </div>
+                {awardsQuery.data!.items.map((item) => {
+                  const status = item.deliveredAt
+                    ? "Consegnato"
+                    : item.claimedAt
+                      ? "Sta arrivando!"
+                      : item.readAt
+                        ? "Visualizzato"
+                        : "Inviato";
+                  return (
+                    <div
+                      className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-3"
+                      key={item.id}>
+                      <div>
+                        <p className="text-sm font-semibold">
+                          {item.guest.nickname}
                         </p>
-                        <time className="text-xs text-stone-400">
-                          {dateFormatter.format(new Date(photo.createdAt))}
-                        </time>
-                        <p className="mt-1 text-sm text-stone-600">
-                          Mi piace: {photo.likeCount}
-                        </p>
+                        <p className="text-xs text-stone-500">{item.message}</p>
                       </div>
-                      <span
-                        className={`rounded-full px-2 py-1 text-[11px] font-bold ${photo.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-stone-200 text-stone-600"}`}>
-                        {photo.status === "published"
-                          ? "Pubblicata"
-                          : "Nascosta"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.claimedAt && !item.deliveredAt ? "animate-pulse bg-amber-100 text-amber-800" : item.deliveredAt ? "bg-emerald-100 text-emerald-700" : "bg-stone-200 text-stone-600"}`}>
+                          {status}
+                        </span>
+                        {!item.deliveredAt && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={resendAward.isPending}
+                            onClick={() => resendAward.mutate(item.id)}>
+                            Rinvia
+                          </Button>
+                        )}
+                        {item.claimedAt && !item.deliveredAt && (
+                          <Button
+                            size="sm"
+                            disabled={delivery.isPending}
+                            onClick={() => delivery.mutate(item.id)}>
+                            Consegnato
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    {photo.caption && (
-                      <p className="mt-3 line-clamp-3 text-sm text-stone-600">
-                        {photo.caption}
-                      </p>
-                    )}
-                    <Button
-                      className="mt-4 w-full"
-                      variant="outline"
-                      disabled={moderation.isPending}
-                      onClick={() =>
-                        moderation.mutate({
-                          photoId: photo.id,
-                          nextStatus:
-                            photo.status === "published"
-                              ? "hidden"
-                              : "published",
-                        })
-                      }>
-                      {photo.status === "published" ? (
-                        <>
-                          <EyeOff className="size-4" />
-                          Nascondi
-                        </>
-                      ) : (
-                        <>
-                          <Eye className="size-4" />
-                          Ripristina
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </article>
-              ))}
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
+        {adminTab === "photos" && (
+          <section>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <h2 className="font-serif text-2xl">Moderazione foto</h2>
+              <div className="flex flex-wrap gap-2">
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value as StatusFilter)}
+                  className="min-h-11 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold">
+                  <option value="all">Tutte</option>
+                  <option value="published">Pubblicate</option>
+                  <option value="hidden">Nascoste</option>
+                </select>
+                <select
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value as SortOrder)}
+                  className="min-h-11 rounded-full border border-stone-200 bg-white px-4 text-sm font-semibold">
+                  <option value="newest">Più recenti</option>
+                  <option value="oldest">Meno recenti</option>
+                  <option value="most_liked">Più apprezzate</option>
+                </select>
+              </div>
             </div>
-          )}
-          <div ref={moreRef} className="h-1" />
-          {photosQuery.isFetchingNextPage && (
-            <p className="py-4 text-center text-sm text-stone-500">
-              Caricamento altre foto…
-            </p>
-          )}
-        </section>}
+            {photosQuery.isPending ? (
+              <AdminLoading />
+            ) : photosQuery.isError ? (
+              <p className="rounded-2xl bg-white p-8 text-center text-stone-500">
+                Impossibile caricare le foto.
+              </p>
+            ) : photos.length === 0 ? (
+              <p className="rounded-2xl bg-white p-8 text-center text-stone-500">
+                Nessuna foto in questa sezione.
+              </p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {photos.map((photo) => (
+                  <article
+                    key={photo.id}
+                    className="overflow-hidden rounded-2xl bg-white shadow-sm">
+                    <div className="relative aspect-square bg-stone-200">
+                      <Image
+                        src={photo.thumbnailUrl}
+                        alt={photo.caption || `Foto di ${photo.guest.nickname}`}
+                        fill
+                        sizes="(max-width: 640px) 100vw, 400px"
+                        className="object-cover"
+                      />
+                    </div>
+                    <div className="p-4">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="truncate font-semibold">
+                            {photo.guest.nickname}
+                          </p>
+                          <time className="text-xs text-stone-400">
+                            {dateFormatter.format(new Date(photo.createdAt))}
+                          </time>
+                          <p className="mt-1 text-sm text-stone-600">
+                            Mi piace: {photo.likeCount}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-2 py-1 text-[11px] font-bold ${photo.status === "published" ? "bg-emerald-50 text-emerald-700" : "bg-stone-200 text-stone-600"}`}>
+                          {photo.status === "published"
+                            ? "Pubblicata"
+                            : "Nascosta"}
+                        </span>
+                      </div>
+                      {photo.caption && (
+                        <p className="mt-3 line-clamp-3 text-sm text-stone-600">
+                          {photo.caption}
+                        </p>
+                      )}
+                      <Button
+                        className="mt-4 w-full"
+                        variant="outline"
+                        disabled={moderation.isPending}
+                        onClick={() =>
+                          moderation.mutate({
+                            photoId: photo.id,
+                            nextStatus:
+                              photo.status === "published"
+                                ? "hidden"
+                                : "published",
+                          })
+                        }>
+                        {photo.status === "published" ? (
+                          <>
+                            <EyeOff className="size-4" />
+                            Nascondi
+                          </>
+                        ) : (
+                          <>
+                            <Eye className="size-4" />
+                            Ripristina
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+            <div ref={moreRef} className="h-1" />
+            {photosQuery.isFetchingNextPage && (
+              <p className="py-4 text-center text-sm text-stone-500">
+                Caricamento altre foto…
+              </p>
+            )}
+          </section>
+        )}
       </main>
     </div>
   );

@@ -29,7 +29,7 @@ async function createGuestHandler(request: Request, { params }: { params: Promis
   const body = await readJsonBody(request, 2 * 1024); if (body.response) return body.response;
   const parsed = createGuestSchema.safeParse(body.data);
   if (!parsed.success) return invalidInput(parsed.error);
-  const { guest, error } = await createGuest(resolved.event.id, parsed.data.nickname);
+  const { guest, error } = await createGuest(resolved.event.id, parsed.data.nickname, parsed.data.avatarKey);
   if (error || !guest) return databaseError("create guest", error);
   return Response.json(guest, { status: 201 });
 }

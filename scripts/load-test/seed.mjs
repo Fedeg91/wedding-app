@@ -3,7 +3,8 @@ import { client, EVENT_ID, EVENT_SLUG, idFor } from "./shared.mjs";
 const db = client();
 const fail = (label, error) => { if (error) throw new Error(`${label}: ${error.message}`); };
 fail("event", (await db.from("events").upsert({ id: EVENT_ID, slug: EVENT_SLUG, title: "Load Test Event", upload_enabled: true, public_gallery_enabled: true })).error);
-const guests = Array.from({ length: 20 }, (_, index) => ({ id: idFor("guest", index), event_id: EVENT_ID, nickname: `Load Guest ${String(index + 1).padStart(2, "0")}` }));
+const avatarKeys = ["fox", "rabbit", "bear", "cat", "dog", "panda", "koala", "penguin", "alpaca", "hedgehog", "otter", "raccoon"];
+const guests = Array.from({ length: 20 }, (_, index) => ({ id: idFor("guest", index), event_id: EVENT_ID, nickname: `Load Guest ${String(index + 1).padStart(2, "0")}`, avatar_key: avatarKeys[index % avatarKeys.length] }));
 fail("guests", (await db.from("guests").upsert(guests)).error);
 for (let offset = 0; offset < 3000; offset += 500) {
   const photos = Array.from({ length: 500 }, (_, item) => {

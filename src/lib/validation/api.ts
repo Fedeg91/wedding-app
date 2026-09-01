@@ -1,11 +1,13 @@
 import { z } from "zod";
+import { AVATAR_IDS } from "@/features/guests/avatars";
 
 export const eventSlugSchema = z.string().trim().min(1).max(100).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/);
 export const uuidSchema = z.uuid();
 const plainText = (value: string) => !/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/.test(value) && !/<\s*\/?\s*(script|iframe|object|embed|svg|img|style)\b/i.test(value);
 export const nicknameSchema = z.string().trim().min(1, "Nickname is required").max(40, "Nickname must be at most 40 characters").refine(plainText, "Nickname must be plain text");
-export const createGuestSchema = z.object({ nickname: nicknameSchema }).strict();
-export const updateGuestSchema = z.object({ nickname: nicknameSchema }).strict();
+export const avatarSchema = z.enum(AVATAR_IDS);
+export const createGuestSchema = z.object({ nickname: nicknameSchema, avatarKey: avatarSchema }).strict();
+export const updateGuestSchema = z.object({ nickname: nicknameSchema, avatarKey: avatarSchema }).strict();
 export const adminLoginSchema = z.object({ eventSlug: eventSlugSchema, password: z.string().min(1).max(200) }).strict();
 export const adminEventUpdateSchema = z.object({ uploadEnabled: z.boolean().optional(), publicGalleryEnabled: z.boolean().optional() }).strict().refine((value) => value.uploadEnabled !== undefined || value.publicGalleryEnabled !== undefined, "At least one setting is required");
 export const adminPhotoStatusSchema = z.object({ status: z.enum(["published", "hidden"]) }).strict();

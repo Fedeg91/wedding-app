@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { PhotoFeedItem, PhotoPost } from "@/types";
+import { avatarUrl } from "@/features/guests/avatars";
 
 const formatter = new Intl.DateTimeFormat("it-IT", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
@@ -39,7 +40,7 @@ export function PhotoCard({ post, onOpen, onLike, pendingPhotoId }: { post: Phot
     window.setTimeout(() => { if (lastTapRef.current === now) { lastTapRef.current = 0; onOpen(photo); } }, 330);
   }
   return <article id={`post-${post.id}`} className="scroll-mt-20 overflow-hidden bg-white sm:rounded-2xl sm:shadow-sm sm:ring-1 sm:ring-stone-200/70">
-    <div className="flex items-center gap-3 px-4 py-3"><div className="flex size-9 items-center justify-center rounded-full bg-rose-100 text-sm font-bold uppercase text-rose-600">{post.guest.nickname.slice(0, 1)}</div><div><p className="text-sm font-semibold text-stone-800">{post.guest.nickname}</p><time className="text-xs text-stone-400" dateTime={post.createdAt}>{formatter.format(new Date(post.createdAt))}</time></div></div>
+    <div className="flex items-center gap-3 px-4 py-3"><Image src={avatarUrl(post.guest.avatarKey)} alt={`Avatar di ${post.guest.nickname}`} width={40} height={40} className="size-10 rounded-full object-cover ring-1 ring-stone-200" /><div><p className="text-sm font-semibold text-stone-800">{post.guest.nickname}</p><time className="text-xs text-stone-400" dateTime={post.createdAt}>{formatter.format(new Date(post.createdAt))}</time></div></div>
     <div className="relative overflow-hidden bg-stone-100" style={{ aspectRatio: `${frame.width ?? 1200}/${frame.height ?? 1200}` }}>
       <div ref={scrollerRef} onScroll={(event) => { const element = event.currentTarget; if (element.clientWidth) setActiveIndex(Math.round(element.scrollLeft / element.clientWidth)); }} className="flex size-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]">
         {post.photos.map((photo, index) => <button type="button" onClick={(event) => handlePhotoClick(photo, event.timeStamp)} className="relative h-full w-full shrink-0 snap-start" aria-label={`Apri foto ${index + 1} di ${post.photos.length} di ${post.guest.nickname}. Tocca due volte per mettere Mi piace.`} key={photo.id}>{!loaded.has(photo.id) && <Skeleton className="absolute inset-0 rounded-none" />}<Image src={photo.imageUrl} alt={photo.caption || `Foto di ${post.guest.nickname}`} fill sizes="(max-width: 672px) 100vw, 640px" className={cn("object-cover transition-all duration-500", loaded.has(photo.id) ? "scale-100 opacity-100" : "scale-[1.01] opacity-0")} onLoad={() => setLoaded((current) => new Set(current).add(photo.id))} loading="lazy" /></button>)}

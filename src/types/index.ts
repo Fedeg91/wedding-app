@@ -10,6 +10,7 @@ export type Event = {
 export type Guest = {
   id: string;
   nickname: string;
+  avatarKey: import("@/features/guests/avatars").AvatarId;
 };
 
 export type PhotoFeedItem = {

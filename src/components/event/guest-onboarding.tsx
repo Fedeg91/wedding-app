@@ -5,6 +5,8 @@ import { Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { Event } from "@/types";
+import { AvatarPicker } from "./avatar-picker";
+import type { AvatarId } from "@/features/guests/avatars";
 
 export function GuestOnboarding({
   event,
@@ -13,17 +15,18 @@ export function GuestOnboarding({
   error,
 }: {
   event: Event;
-  onComplete: (nickname: string) => void;
+  onComplete: (nickname: string, avatarKey: AvatarId) => void;
   pending?: boolean;
   error?: string | null;
 }) {
   const [nickname, setNickname] = useState("");
+  const [avatarKey, setAvatarKey] = useState<AvatarId>("fox");
 
   function submit(e: FormEvent) {
     e.preventDefault();
     const cleanNickname = nickname.trim();
     if (!cleanNickname) return;
-    onComplete(cleanNickname);
+    onComplete(cleanNickname, avatarKey);
   }
 
   return (
@@ -54,6 +57,7 @@ export function GuestOnboarding({
             autoFocus
             autoComplete="nickname"
           />
+          <div className="pt-3"><AvatarPicker value={avatarKey} onChange={setAvatarKey} disabled={pending} /></div>
           {error && (
             <p
               className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"

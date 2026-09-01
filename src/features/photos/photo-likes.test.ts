@@ -8,7 +8,7 @@ import { updatePhotoLikeInPages } from "./likes-cache";
 const photo = (id: string, likeCount = 0, likedByCurrentGuest = false): PhotoFeedItem => ({
   id, imageUrl: "/image.jpg", fullscreenUrl: "/image.jpg", width: 1, height: 1,
   caption: null, createdAt: "2026-08-31T12:00:00Z", likeCount, likedByCurrentGuest,
-  guest: { id: "00000000-0000-4000-8000-000000000001", nickname: "Marco" },
+  guest: { id: "00000000-0000-4000-8000-000000000001", nickname: "Marco", avatarKey: "fox" },
 });
 const post = (id: string, photos: PhotoFeedItem[]): PhotoPost => ({ id, photos, caption: null, createdAt: "2026-08-31T12:00:00Z", guest: photos[0].guest });
 

@@ -16,7 +16,7 @@ async function updateGuestHandler(request: Request, { params }: { params: Promis
   const { event, error: eventError } = await findEventBySlug(slug.data);
   if (eventError) return databaseError("resolve nickname event", eventError);
   if (!event) return apiError("EVENT_NOT_FOUND", "Event not found", 404);
-  const { guest, error } = await updateGuest(event.id, guestId.data, parsed.data.nickname);
+  const { guest, error } = await updateGuest(event.id, guestId.data, parsed.data.nickname, parsed.data.avatarKey);
   if (error) return databaseError("update guest nickname", error);
   if (!guest) return apiError("INVALID_GUEST", "Guest does not belong to this event", 404);
   return Response.json(guest);

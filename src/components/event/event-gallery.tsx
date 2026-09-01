@@ -26,10 +26,11 @@ import {
 import { getGuestAward, respondToGuestAward } from "@/features/awards/api";
 import { getEvent } from "@/features/events/api";
 import {
-  changeGuestNickname,
+  changeGuestProfile,
   getGuests,
   registerGuest,
 } from "@/features/guests/api";
+import type { AvatarId } from "@/features/guests/avatars";
 import { getPhotoPage, setPhotoLike } from "@/features/photos/api";
 import { updatePhotoLikeInPages } from "@/features/photos/likes-cache";
 import type { InfiniteData } from "@tanstack/react-query";
@@ -54,7 +55,7 @@ const PhotoLightbox = dynamic(
   { ssr: false },
 );
 
-type StoredGuestIdentity = { guestId: string; nickname: string };
+type StoredGuestIdentity = { guestId: string; nickname: string; avatarKey?: AvatarId };
 
 export function EventGallery({ eventSlug }: { eventSlug: string }) {
   const queryClient = useQueryClient();
@@ -144,7 +145,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
         if (saved) {
           const parsed = JSON.parse(saved) as StoredGuestIdentity;
           if (parsed.guestId && parsed.nickname)
-            setGuest({ id: parsed.guestId, nickname: parsed.nickname });
+            setGuest({ id: parsed.guestId, nickname: parsed.nickname, avatarKey: parsed.avatarKey ?? "fox" });
         }
       } catch {
         localStorage.removeItem(storageKey);
@@ -156,15 +157,21 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
 
   useEffect(() => {
     if (!identityReady || !guest || !guestsQuery.data) return;
-    if (!guestsQuery.data.items.some((item) => item.id === guest.id)) {
+    const currentGuest = guestsQuery.data.items.find((item) => item.id === guest.id);
+    if (!currentGuest) {
       localStorage.removeItem(storageKey);
       const clearStaleGuest = window.setTimeout(() => setGuest(null), 0);
       return () => window.clearTimeout(clearStaleGuest);
     }
+    if (currentGuest.nickname !== guest.nickname || currentGuest.avatarKey !== guest.avatarKey) {
+      localStorage.setItem(storageKey, JSON.stringify({ guestId: currentGuest.id, nickname: currentGuest.nickname, avatarKey: currentGuest.avatarKey } satisfies StoredGuestIdentity));
+      const syncGuest = window.setTimeout(() => setGuest(currentGuest), 0);
+      return () => window.clearTimeout(syncGuest);
+    }
   }, [guest, guestsQuery.data, identityReady, storageKey]);
 
   const registration = useMutation({
-    mutationFn: (nickname: string) => registerGuest(eventSlug, nickname),
+    mutationFn: ({ nickname, avatarKey }: { nickname: string; avatarKey: AvatarId }) => registerGuest(eventSlug, nickname, avatarKey),
     onSuccess: (createdGuest) => {
       queryClient.setQueryData<{ items: Guest[] }>(
         ["guests", eventSlug],
@@ -179,6 +186,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
         JSON.stringify({
           guestId: createdGuest.id,
           nickname: createdGuest.nickname,
+          avatarKey: createdGuest.avatarKey,
         } satisfies StoredGuestIdentity),
       );
       setGuest(createdGuest);
@@ -312,7 +320,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
     return (
       <GuestOnboarding
         event={event}
-        onComplete={(nickname) => registration.mutate(nickname)}
+        onComplete={(nickname, avatarKey) => registration.mutate({ nickname, avatarKey })}
         pending={registration.isPending}
         error={
           registration.isError
@@ -331,14 +339,15 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
   );
   const guests = guestsQuery.data?.items ?? [];
 
-  async function saveNickname(nickname: string) {
+  async function saveProfile(nickname: string, avatarKey: AvatarId) {
     if (!guest) throw new Error("Guest identity unavailable");
-    const updated = await changeGuestNickname(eventSlug, guest.id, nickname);
+    const updated = await changeGuestProfile(eventSlug, guest.id, nickname, avatarKey);
     localStorage.setItem(
       storageKey,
       JSON.stringify({
         guestId: updated.id,
         nickname: updated.nickname,
+        avatarKey: updated.avatarKey,
       } satisfies StoredGuestIdentity),
     );
     setGuest(updated);
@@ -476,7 +485,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
         open={profileOpen}
         onOpenChange={setProfileOpen}
         guest={guest}
-        onSave={saveNickname}
+        onSave={saveProfile}
       />
       <PhotoLightbox
         photo={selectedPhoto}
