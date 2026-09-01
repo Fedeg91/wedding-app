@@ -14,11 +14,12 @@ export function PhotoCard({ post, onOpen, onLike, pendingPhotoId }: { post: Phot
   const [loaded, setLoaded] = useState(() => new Set<string>());
   const scrollerRef = useRef<HTMLDivElement>(null);
   const active = post.photos[activeIndex] ?? post.photos[0];
+  const frame = post.photos[0];
   const carousel = post.photos.length > 1;
   function goTo(index: number) { const next = Math.max(0, Math.min(post.photos.length - 1, index)); scrollerRef.current?.children[next]?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" }); setActiveIndex(next); }
   return <article className="overflow-hidden bg-white sm:rounded-2xl sm:shadow-sm sm:ring-1 sm:ring-stone-200/70">
     <div className="flex items-center gap-3 px-4 py-3"><div className="flex size-9 items-center justify-center rounded-full bg-rose-100 text-sm font-bold uppercase text-rose-600">{post.guest.nickname.slice(0, 1)}</div><div><p className="text-sm font-semibold text-stone-800">{post.guest.nickname}</p><time className="text-xs text-stone-400" dateTime={post.createdAt}>{formatter.format(new Date(post.createdAt))}</time></div></div>
-    <div className="relative overflow-hidden bg-stone-100" style={{ aspectRatio: `${active.width ?? 1200}/${active.height ?? 1200}` }}>
+    <div className="relative overflow-hidden bg-stone-100" style={{ aspectRatio: `${frame.width ?? 1200}/${frame.height ?? 1200}` }}>
       <div ref={scrollerRef} onScroll={(event) => { const element = event.currentTarget; if (element.clientWidth) setActiveIndex(Math.round(element.scrollLeft / element.clientWidth)); }} className="flex size-full snap-x snap-mandatory overflow-x-auto [scrollbar-width:none]">
         {post.photos.map((photo, index) => <button type="button" onClick={() => onOpen(photo)} className="relative h-full w-full shrink-0 snap-start" aria-label={`Apri foto ${index + 1} di ${post.photos.length} di ${post.guest.nickname}`} key={photo.id}>{!loaded.has(photo.id) && <Skeleton className="absolute inset-0 rounded-none" />}<Image src={photo.imageUrl} alt={photo.caption || `Foto di ${post.guest.nickname}`} fill sizes="(max-width: 672px) 100vw, 640px" className={cn("object-cover transition-opacity duration-500", loaded.has(photo.id) ? "opacity-100" : "opacity-0")} onLoad={() => setLoaded((current) => new Set(current).add(photo.id))} loading="lazy" /></button>)}
       </div>
