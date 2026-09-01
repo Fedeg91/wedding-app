@@ -6,7 +6,7 @@ import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tansta
 import { ArrowUp, Camera, Images, RefreshCw, Trophy, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { getGuestAward, markGuestAwardRead } from "@/features/awards/api";
+import { getGuestAward, respondToGuestAward } from "@/features/awards/api";
 import { getEvent } from "@/features/events/api";
 import { changeGuestNickname, getGuests, registerGuest } from "@/features/guests/api";
 import { getPhotoPage, setPhotoLike } from "@/features/photos/api";
@@ -39,11 +39,18 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
   const [online, setOnline] = useState(true);
   const [showLatest, setShowLatest] = useState(false);
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const soundedAwardRef = useRef<string | null>(null);
 
   const eventQuery = useQuery({ queryKey: ["event", eventSlug], queryFn: () => getEvent(eventSlug), staleTime: 5_000, gcTime: 10 * 60_000, refetchOnWindowFocus: true, refetchInterval: 30_000 });
   const guestsQuery = useQuery({ queryKey: ["guests", eventSlug], queryFn: () => getGuests(eventSlug), enabled: eventQuery.isSuccess, staleTime: 60_000, gcTime: 10 * 60_000 });
   useEffect(() => { const update = () => setOnline(navigator.onLine); update(); window.addEventListener("online", update); window.addEventListener("offline", update); return () => { window.removeEventListener("online", update); window.removeEventListener("offline", update); }; }, []);
   useEffect(() => { const update = () => setShowLatest(window.scrollY > 700); update(); window.addEventListener("scroll", update, { passive: true }); return () => window.removeEventListener("scroll", update); }, []);
+  useEffect(() => {
+    const unlock = () => { if (!audioContextRef.current) audioContextRef.current = new AudioContext(); void audioContextRef.current.resume(); };
+    window.addEventListener("pointerdown", unlock, { once: true });
+    return () => { window.removeEventListener("pointerdown", unlock); void audioContextRef.current?.close(); audioContextRef.current = null; };
+  }, []);
 
   useEffect(() => {
     const hydrate = window.setTimeout(() => {
@@ -96,9 +103,16 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
     refetchOnWindowFocus: true,
   });
   const readAward = useMutation({
-    mutationFn: (awardId: string) => markGuestAwardRead(eventSlug, guest!.id, awardId),
+    mutationFn: ({ awardId, action }: { awardId: string; action: "dismiss" | "claim" }) => respondToGuestAward(eventSlug, guest!.id, awardId, action),
     onSuccess: () => queryClient.setQueryData(["award", eventSlug, guest?.id], { award: null }),
   });
+  useEffect(() => {
+    const awardId = awardQuery.data?.award?.id; const context = audioContextRef.current;
+    if (!awardId || soundedAwardRef.current === awardId || !context || context.state !== "running") return;
+    soundedAwardRef.current = awardId;
+    const start = context.currentTime;
+    [659.25, 783.99, 1046.5].forEach((frequency, index) => { const oscillator = context.createOscillator(); const gain = context.createGain(); oscillator.frequency.value = frequency; oscillator.type = "sine"; gain.gain.setValueAtTime(0.0001, start + index * 0.12); gain.gain.exponentialRampToValueAtTime(0.16, start + index * 0.12 + 0.02); gain.gain.exponentialRampToValueAtTime(0.0001, start + index * 0.12 + 0.3); oscillator.connect(gain).connect(context.destination); oscillator.start(start + index * 0.12); oscillator.stop(start + index * 0.12 + 0.31); });
+  }, [awardQuery.data?.award?.id]);
   const likes = useMutation({
     mutationFn: ({ photoId, liked }: { photoId: string; liked: boolean }) => setPhotoLike(eventSlug, photoId, guest!.id, liked),
     onMutate: async ({ photoId, liked }) => {
@@ -158,12 +172,12 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
       <UploadSheet open={uploadOpen} onOpenChange={setUploadOpen} eventSlug={eventSlug} guestId={guest.id} onViewPost={() => { window.scrollTo({ top: 0, behavior: "smooth" }); void photosQuery.refetch(); }} />
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} guest={guest} onSave={saveNickname} />
       <PhotoLightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
-      <Dialog open={Boolean(awardQuery.data?.award)} onOpenChange={(open) => { const current = awardQuery.data?.award; if (!open && current && !readAward.isPending) readAward.mutate(current.id); }}>
+      <Dialog open={Boolean(awardQuery.data?.award)} onOpenChange={(open) => { const current = awardQuery.data?.award; if (!open && current && !readAward.isPending) readAward.mutate({ awardId: current.id, action: "dismiss" }); }}>
         <DialogContent className="text-center">
           <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-amber-100 text-amber-600"><Trophy className="size-10" /></div>
           <DialogTitle className="mt-4 font-serif text-3xl text-stone-900">Congratulazioni! 🎉</DialogTitle>
           <DialogDescription className="mt-3 text-lg leading-relaxed text-stone-600">{awardQuery.data?.award?.message}</DialogDescription>
-          <Button className="mt-5 w-full" disabled={readAward.isPending} onClick={() => { const current = awardQuery.data?.award; if (current) readAward.mutate(current.id); }}>Ho visto, grazie!</Button>
+          <Button className="mt-5 w-full" disabled={readAward.isPending} onClick={() => { const current = awardQuery.data?.award; if (current) readAward.mutate({ awardId: current.id, action: "claim" }); }}>🎁 Sto arrivando a ritirarlo!</Button>
         </DialogContent>
       </Dialog>
     </div>

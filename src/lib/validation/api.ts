@@ -12,7 +12,8 @@ export const adminPhotoStatusSchema = z.object({ status: z.enum(["published", "h
 export const adminPhotoQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(50).default(30), cursor: z.string().min(1).optional(), status: z.enum(["published", "hidden", "all"]).default("all"), sort: z.enum(["newest", "oldest", "most_liked"]).default("newest") }).strict();
 export const photoLikeSchema = z.object({ guestId: uuidSchema }).strict();
 export const adminAwardSchema = z.object({ guestId: uuidSchema, message: z.string().trim().min(1).max(160).refine(plainText, "Message must be plain text").default("Hai vinto un premio!") }).strict();
-export const awardReadSchema = z.object({ awardId: uuidSchema }).strict();
+export const awardReadSchema = z.object({ awardId: uuidSchema, action: z.enum(["dismiss", "claim"]) }).strict();
+export const adminAwardDeliverySchema = z.object({ awardId: uuidSchema }).strict();
 export const uploadSignatureSchema = z.object({ guestId: uuidSchema }).strict();
 export const photoMetadataSchema = z.object({
   guestId: uuidSchema,

@@ -28,6 +28,8 @@ import {
   patchAdminEvent,
   patchAdminPhoto,
   sendGuestAward,
+  getAdminAwards,
+  deliverGuestAward,
 } from "@/features/admin/api";
 import { getGuests } from "@/features/guests/api";
 
@@ -63,10 +65,12 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
     staleTime: 10_000,
   });
   const guestsQuery = useQuery({ queryKey: ["guests", eventSlug], queryFn: () => getGuests(eventSlug), staleTime: 60_000 });
+  const awardsQuery = useQuery({ queryKey: ["admin-awards", eventSlug], queryFn: () => getAdminAwards(eventSlug), refetchInterval: 30_000, refetchOnWindowFocus: true });
   const award = useMutation({
     mutationFn: () => sendGuestAward(eventSlug, awardGuestId, awardMessage),
-    onSuccess: () => setAwardMessage("Hai vinto un premio!"),
+    onSuccess: async () => { setAwardMessage("Hai vinto un premio!"); await queryClient.invalidateQueries({ queryKey: ["admin-awards", eventSlug] }); },
   });
+  const delivery = useMutation({ mutationFn: (awardId: string) => deliverGuestAward(eventSlug, awardId), onSuccess: async () => { await queryClient.invalidateQueries({ queryKey: ["admin-awards", eventSlug] }); } });
   const controls = useMutation({
     mutationFn: (updates: {
       uploadEnabled?: boolean;
@@ -209,6 +213,7 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
             <Button disabled={!awardGuestId || !awardMessage.trim() || award.isPending} onClick={() => award.mutate()}><Trophy className="size-4" />{award.isPending ? "Invio…" : "Invia premio"}</Button>
           </div>
           <p className={`mt-3 text-sm ${award.isError ? "text-red-600" : "text-emerald-700"}`} role="status">{award.isSuccess ? "Premio inviato: apparirà nell’app dell’invitato." : award.isError ? "Invio non riuscito. Riprova." : "Il messaggio sarà mostrato una sola volta e poi segnato come letto."}</p>
+          {(awardsQuery.data?.items.length ?? 0) > 0 && <div className="mt-5 space-y-2 border-t border-stone-100 pt-4"><div className="flex items-center justify-between"><h3 className="text-sm font-bold text-stone-700">Ultimi premi</h3><button type="button" className="text-xs font-semibold text-rose-600" onClick={() => void awardsQuery.refetch()}>Aggiorna</button></div>{awardsQuery.data!.items.map((item) => { const status = item.deliveredAt ? "Consegnato" : item.claimedAt ? "Sta arrivando!" : item.readAt ? "Visualizzato" : "Inviato"; return <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-stone-50 px-3 py-3" key={item.id}><div><p className="text-sm font-semibold">{item.guest.nickname}</p><p className="text-xs text-stone-500">{item.message}</p></div><div className="flex items-center gap-2"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${item.claimedAt && !item.deliveredAt ? "animate-pulse bg-amber-100 text-amber-800" : item.deliveredAt ? "bg-emerald-100 text-emerald-700" : "bg-stone-200 text-stone-600"}`}>{status}</span>{item.claimedAt && !item.deliveredAt && <Button size="sm" disabled={delivery.isPending} onClick={() => delivery.mutate(item.id)}>Consegnato</Button>}</div></div>; })}</div>}
         </section>
         <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">

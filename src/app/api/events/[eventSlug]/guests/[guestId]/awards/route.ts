@@ -1,4 +1,4 @@
-import { getUnreadGuestAward, markGuestAwardRead } from "@/features/awards/server/award-repository";
+import { getUnreadGuestAward, respondToGuestAward } from "@/features/awards/server/award-repository";
 import { findEventBySlug } from "@/features/events/server/event-repository";
 import { guestBelongsToEvent } from "@/features/guests/server/guest-repository";
 import { apiError, databaseError, invalidInput } from "@/lib/api/errors";
@@ -25,8 +25,8 @@ async function readAwardHandler(request: Request, { params }: { params: Promise<
   const resolved = await resolve(await params); if (!resolved.eventId || !resolved.guestId) return resolved.response!;
   const body = await readJsonBody(request, 1024); if (body.response) return body.response;
   const parsed = awardReadSchema.safeParse(body.data); if (!parsed.success) return invalidInput(parsed.error);
-  const result = await markGuestAwardRead(resolved.eventId, resolved.guestId, parsed.data.awardId); if (result.error) return databaseError("read guest award", result.error);
-  return Response.json({ read: result.found });
+  const result = await respondToGuestAward(resolved.eventId, resolved.guestId, parsed.data.awardId, parsed.data.action === "claim"); if (result.error) return databaseError("respond guest award", result.error);
+  return Response.json({ updated: result.found });
 }
 
 export const GET = withApiObservability("public.awards.get", getAwardHandler);

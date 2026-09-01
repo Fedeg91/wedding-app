@@ -11,7 +11,7 @@ const buttonVariants = cva(
         outline: "border border-stone-200 bg-white text-stone-700 hover:bg-stone-50",
         ghost: "text-stone-600 hover:bg-stone-100",
       },
-      size: { default: "px-5 py-2.5", icon: "size-11 p-0" },
+      size: { default: "px-5 py-2.5", sm: "min-h-9 px-3 py-1 text-xs", icon: "size-11 p-0" },
     },
     defaultVariants: { variant: "default", size: "default" },
   },
