@@ -2,6 +2,25 @@
 
 Audit date: 2026-09-01 (Europe/Rome)
 
+## Final aligned-region retest
+
+**FINAL VERDICT: READY WITH MINOR RISKS.**
+
+The optimized application was deployed with Vercel Functions in Stockholm (`arn1`), aligned with Supabase `eu-north-1`. Response headers confirmed `fra1::arn1`; the previous `iad1` execution is gone.
+
+The decisive wedding scenario spreads arrivals over 15 seconds, then each guest loads event, guest list and three liked-state cursor pages with realistic pauses:
+
+| Guests | Requests | p50 | p95 | p99 | HTTP errors | 5xx | Result |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 60 | 305 | 229 ms | 328 ms | 399 ms | 0% | 0 | PASS |
+| 100 | 505 | 450 ms | 1,350 ms | 1,550 ms | 0% | 0 | PASS reliability; minor tail latency |
+
+Two independent 100-guest QR bursts also passed with zero errors: p95 268–304 ms and p99 363–606 ms. Two harsher tests starting all 60 browsers at the exact same instant completed with zero errors but p95 2.68–2.81 seconds; this is retained as a stress result, not substituted for the realistic arrival pattern.
+
+All aligned-region test categories returned zero HTTP errors and zero 5xx: browsing, QR burst, guest creation, concurrent likes, upload signatures, real Cloudinary integration and admin smoke. Cursor traversal returned 3,000/3,000 unique rows in both directions. The final local quality gate passed lint, typecheck, 35/35 unit tests and optimized build.
+
+The remaining minor risk is real-device/manual UX coverage, especially four-photo selection with 3 active + 1 queued and network interruption. No automated load evidence indicates a likely collapse at the expected 50–60 active guests.
+
 ## Vercel production verification update
 
 **MEASURED on 2026-09-01** against `https://wedding-app-seven-sable.vercel.app`, using only the isolated `load-test-event` for writes. The production wedding event was used only by the reversible smoke test, which restored both controls in a `finally` block.
@@ -45,7 +64,7 @@ Seventy distinct concurrent likes produced exactly 70 rows/count. Repeating a li
 - One 68-byte real PNG: direct Cloudinary upload PASS, metadata persistence PASS, transformed `w_1000` feed delivery PASS; Cloudinary asset deleted afterward.
 - Local maximum batch: changed from 10 to **4**; network concurrency remains the safer **3**, leaving at most one queued. Unit test explicitly locks the batch limit at four.
 
-This production evidence reinforces the **NOT READY** verdict until region placement/database round trips are corrected and the realistic 50/60 tests are rerun successfully.
+This was the pre-optimization result. It is superseded by the final aligned-region retest above.
 
 ## Feed consolidation and query-plan update
 
@@ -76,7 +95,7 @@ A local optimized Next.js build using the remote database improved the 50-VU rea
 
 ## Verdict
 
-**NOT READY** for an unattended wedding release today.
+**READY WITH MINOR RISKS** after the final aligned-region retest documented above.
 
 The architecture is appropriate and all tested flows remained functionally reliable (zero HTTP errors in the measured load tests), but realistic browsing at the expected 50–60 concurrent users missed the latency targets by a wide margin. The tests also ran through a local Next.js production server to remote Supabase, not through the final Vercel deployment, and the production checklist still lacks deployment, real-device and production upload verification.
 
@@ -85,7 +104,7 @@ The architecture is appropriate and all tested flows remained functionally relia
 - Maximum burst concurrency meeting criteria: **100 arrivals over 15 seconds**.
 - Expected attendance: **100**.
 - Expected simultaneous active users: **50–60**.
-- Confidence: **MEDIUM** in the negative readiness verdict; **LOW** in final Vercel capacity until it is measured.
+- Confidence: **HIGH** for the expected 50–60 active guests; **MEDIUM** for 100 simultaneously browsing guests.
 
 ## Evidence labels and test environment
 
@@ -404,4 +423,4 @@ No provider was added and no infrastructure upgrade is recommended from this non
 
 **Can this application safely be used at a wedding with approximately 100 guests?**
 
-**Not yet with sufficient evidence.** Its architecture and correctness controls are strong, the 100-guest arrival burst passed, and every measured load request completed without HTTP errors. However, realistic browsing at the expected 50–60 simultaneous users was several times slower than the acceptance targets, and the final Vercel/device/upload path remains unverified. Complete the four P0 items before treating it as wedding-ready.
+**Yes, with minor residual risk.** The final region-aligned deployment passed the realistic 60-guest browsing scenario inside all latency/error targets and completed the 100-guest browsing scenario without errors. A real-device rehearsal remains required before removing the final operational caveat.

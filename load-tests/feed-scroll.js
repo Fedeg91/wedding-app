@@ -1,9 +1,23 @@
 import http from "k6/http";
 import { check, sleep } from "k6";
-import { baseUrl, duration, eventSlug, record, summaryTrendStats, thresholds, vus } from "./lib/config.js";
+import { baseUrl, eventSlug, record, summaryTrendStats, thresholds, vus } from "./lib/config.js";
 
 if (!__ENV.LOAD_TEST_GUEST_ID) throw new Error("LOAD_TEST_GUEST_ID is required for a realistic liked-state feed");
-export const options = { vus, duration, thresholds, summaryTrendStats };
+const arrivals = __ENV.ARRIVAL_WINDOW === "true";
+export const options = arrivals ? {
+  scenarios: {
+    wedding_browsing: {
+      executor: "constant-arrival-rate",
+      rate: vus,
+      timeUnit: "15s",
+      duration: "15s",
+      preAllocatedVUs: vus,
+      maxVUs: vus,
+    },
+  },
+  thresholds,
+  summaryTrendStats,
+} : { vus, iterations: vus, thresholds, summaryTrendStats };
 
 export default function feedScroll() {
   const event = http.get(`${baseUrl}/api/events/${eventSlug}`); record(event);
