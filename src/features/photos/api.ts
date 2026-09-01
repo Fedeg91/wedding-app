@@ -1,5 +1,5 @@
 import { fetchJson } from "@/lib/api/client";
-import type { PaginatedResponse, PhotoFeedItem } from "@/types";
+import type { PaginatedResponse, PhotoPost } from "@/types";
 
 export type PhotoFeedFilters = { guestId?: string; currentGuestId?: string; sort: "newest" | "oldest"; limit?: number };
 
@@ -8,7 +8,7 @@ export function getPhotoPage(eventSlug: string, filters: PhotoFeedFilters, curso
   if (filters.guestId) query.set("guestId", filters.guestId);
   if (filters.currentGuestId) query.set("currentGuestId", filters.currentGuestId);
   if (cursor) query.set("cursor", cursor);
-  return fetchJson<PaginatedResponse<PhotoFeedItem>>(`/api/events/${encodeURIComponent(eventSlug)}/photos?${query}`);
+  return fetchJson<PaginatedResponse<PhotoPost>>(`/api/events/${encodeURIComponent(eventSlug)}/photos?${query}`);
 }
 
 export function setPhotoLike(eventSlug: string, photoId: string, guestId: string, liked: boolean) {

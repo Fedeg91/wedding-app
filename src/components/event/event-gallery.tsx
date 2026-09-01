@@ -16,7 +16,7 @@ import { GalleryFilters, type SortOrder } from "./gallery-filters";
 import { GallerySkeleton } from "./gallery-skeleton";
 import { GuestOnboarding } from "./guest-onboarding";
 import { PhotoCard } from "./photo-card";
-import type { Guest, PhotoFeedItem } from "@/types";
+import type { Guest, PhotoFeedItem, PhotoPost } from "@/types";
 
 const UploadSheet = dynamic(() => import("./upload-sheet").then((module) => module.UploadSheet), { ssr: false });
 const ProfileSheet = dynamic(() => import("./profile-sheet").then((module) => module.ProfileSheet), { ssr: false });
@@ -87,8 +87,8 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
     mutationFn: ({ photoId, liked }: { photoId: string; liked: boolean }) => setPhotoLike(eventSlug, photoId, guest!.id, liked),
     onMutate: async ({ photoId, liked }) => {
       await queryClient.cancelQueries({ queryKey: ["photos", eventSlug] });
-      const snapshots = queryClient.getQueriesData<InfiniteData<PaginatedResponse<PhotoFeedItem>>>({ queryKey: ["photos", eventSlug] });
-      queryClient.setQueriesData<InfiniteData<PaginatedResponse<PhotoFeedItem>>>({ queryKey: ["photos", eventSlug] }, (data) => updatePhotoLikeInPages(data, photoId, liked));
+      const snapshots = queryClient.getQueriesData<InfiniteData<PaginatedResponse<PhotoPost>>>({ queryKey: ["photos", eventSlug] });
+      queryClient.setQueriesData<InfiniteData<PaginatedResponse<PhotoPost>>>({ queryKey: ["photos", eventSlug] }, (data) => updatePhotoLikeInPages(data, photoId, liked));
       return { snapshots };
     },
     onError: (_error, _variables, context) => {
@@ -114,7 +114,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
   if (!event.publicGalleryEnabled) return <FullPageMessage icon={<Images className="size-10" />} title={event.title} message="La gallery di questo evento non è più disponibile." />;
   if (!guest) return <GuestOnboarding event={event} onComplete={(nickname) => registration.mutate(nickname)} pending={registration.isPending} error={registration.isError ? "Non è stato possibile registrarti. Riprova." : null} />;
 
-  const photos = Array.from(new Map((photosQuery.data?.pages.flatMap((page) => page.items) ?? []).map((photo) => [photo.id, photo])).values());
+  const posts = Array.from(new Map((photosQuery.data?.pages.flatMap((page) => page.items) ?? []).map((post) => [post.id, post])).values());
   const guests = guestsQuery.data?.items ?? [];
 
   async function saveNickname(nickname: string) {
@@ -132,7 +132,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
       {!online && <div className="sticky top-16 z-30 bg-amber-100 px-4 py-2 text-center text-sm font-medium text-amber-900" role="status">Sei offline. Puoi vedere le foto già caricate, ma serve internet per aggiornare o pubblicare.</div>}
       <GalleryFilters guests={guests} guestId={guestId} sortOrder={sortOrder} onGuestChange={setGuestId} onSortChange={setSortOrder} />
       <main className="mx-auto max-w-2xl space-y-4 py-4 sm:px-4">
-        {photosQuery.isPending ? <GallerySkeleton /> : photosQuery.isError ? <InlineError offline={!online} onRetry={() => void photosQuery.refetch()} /> : photos.length ? photos.map((photo) => <PhotoCard photo={photo} onOpen={() => setSelectedPhoto(photo)} onLike={() => likes.mutate({ photoId: photo.id, liked: !photo.likedByCurrentGuest })} likePending={likes.isPending && likes.variables?.photoId === photo.id} key={photo.id} />) : <div className="px-6 py-24 text-center"><Images className="mx-auto mb-3 size-9 text-stone-300" /><p className="font-semibold text-stone-700">Nessuna foto da mostrare</p><p className="mt-1 text-sm text-stone-400">{guestId === "all" ? "Sii il primo a condividere una foto di oggi." : "Prova a cambiare il filtro."}</p>{guestId === "all" && event.uploadEnabled && <Button className="mt-5" onClick={() => setUploadOpen(true)}><Camera className="size-4" />Condividi la prima foto</Button>}</div>}
+        {photosQuery.isPending ? <GallerySkeleton /> : photosQuery.isError ? <InlineError offline={!online} onRetry={() => void photosQuery.refetch()} /> : posts.length ? posts.map((post) => <PhotoCard post={post} onOpen={setSelectedPhoto} onLike={(photo) => likes.mutate({ photoId: photo.id, liked: !photo.likedByCurrentGuest })} pendingPhotoId={likes.isPending ? likes.variables?.photoId : undefined} key={post.id} />) : <div className="px-6 py-24 text-center"><Images className="mx-auto mb-3 size-9 text-stone-300" /><p className="font-semibold text-stone-700">Nessuna foto da mostrare</p><p className="mt-1 text-sm text-stone-400">{guestId === "all" ? "Sii il primo a condividere una foto di oggi." : "Prova a cambiare il filtro."}</p>{guestId === "all" && event.uploadEnabled && <Button className="mt-5" onClick={() => setUploadOpen(true)}><Camera className="size-4" />Condividi la prima foto</Button>}</div>}
         {photosQuery.isFetchingNextPage && <GallerySkeleton />}
         {photosQuery.isFetchNextPageError && <div className="px-4 py-5 text-center"><p className="text-sm text-stone-500">Non siamo riusciti a caricare altre foto.</p><Button className="mt-3" variant="outline" onClick={() => void photosQuery.fetchNextPage()}><RefreshCw className="size-4" />Riprova</Button></div>}
         <div ref={loadMoreRef} className="h-1" aria-hidden="true" />

@@ -12,7 +12,7 @@ import { UploadItem } from "@/features/photos/upload/upload-item";
 import { validateUploadFiles } from "@/features/photos/upload/validation";
 import { nextQueuedIds, type QueueStatus } from "@/features/photos/upload/queue";
 
-export type UploadQueueItem = { id: string; clientUploadId: string; file: File; previewUrl: string; status: QueueStatus; progress: number; error?: string; cloudinaryResult?: CloudinaryUploadResult };
+export type UploadQueueItem = { id: string; clientUploadId: string; uploadGroupId: string; uploadGroupCreatedAt: string; uploadGroupPosition: number; file: File; previewUrl: string; status: QueueStatus; progress: number; error?: string; cloudinaryResult?: CloudinaryUploadResult };
 
 export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: boolean; onOpenChange: (open: boolean) => void; eventSlug: string; guestId: string }) {
   const queryClient = useQueryClient();
@@ -21,6 +21,7 @@ export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: 
   const [selectionError, setSelectionError] = useState<string | null>(null);
   const [online, setOnline] = useState(true);
   const previewUrlsRef = useRef(new Set<string>());
+  const uploadGroupRef = useRef<{ id: string; createdAt: string } | null>(null);
   const busy = items.some((item) => ["signing", "uploading", "saving"].includes(item.status));
 
   useEffect(() => () => previewUrlsRef.current.forEach((url) => URL.revokeObjectURL(url)), []);
@@ -33,7 +34,11 @@ export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: 
     const errors = files.length > available ? [{ message: `Puoi selezionare al massimo ${MAX_BATCH_SIZE} foto.` }, ...validateUploadFiles(files.slice(0, available))] : validateUploadFiles(files);
     setSelectionError(errors.map((error) => error.fileName ? `${error.fileName}: ${error.message}` : error.message).join(" ") || null);
     const invalidNames = new Set(errors.filter((error) => error.fileName).map((error) => error.fileName));
-    const selected = files.slice(0, available).filter((file) => !invalidNames.has(file.name)).map((file): UploadQueueItem => ({ id: crypto.randomUUID(), clientUploadId: crypto.randomUUID(), file, previewUrl: URL.createObjectURL(file), status: "selected", progress: 0 }));
+    const group = uploadGroupRef.current ?? { id: crypto.randomUUID(), createdAt: new Date().toISOString() };
+    uploadGroupRef.current = group;
+    const usedPositions = new Set(items.map((item) => item.uploadGroupPosition));
+    const freePositions = Array.from({ length: MAX_BATCH_SIZE }, (_, index) => index).filter((position) => !usedPositions.has(position));
+    const selected = files.slice(0, available).filter((file) => !invalidNames.has(file.name)).map((file, index): UploadQueueItem => ({ id: crypto.randomUUID(), clientUploadId: crypto.randomUUID(), uploadGroupId: group.id, uploadGroupCreatedAt: group.createdAt, uploadGroupPosition: freePositions[index], file, previewUrl: URL.createObjectURL(file), status: "selected", progress: 0 }));
     selected.forEach((item) => previewUrlsRef.current.add(item.previewUrl));
     setItems((current) => [...current, ...selected]);
     event.target.value = "";
@@ -59,7 +64,7 @@ export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: 
       } else {
         patchItem(id, { status: "saving", progress: 100, error: undefined });
       }
-      await persistUploadedPhoto(eventSlug, guestId, item.clientUploadId, result, caption);
+      await persistUploadedPhoto(eventSlug, guestId, item.clientUploadId, item.uploadGroupId, item.uploadGroupCreatedAt, item.uploadGroupPosition, result, caption);
       patchItem(id, { status: "success", progress: 100, error: undefined, cloudinaryResult: result });
       await queryClient.invalidateQueries({ queryKey: ["photos", eventSlug] });
     } catch (error) {
@@ -85,6 +90,7 @@ export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: 
       setItems([]);
       setCaption("");
       setSelectionError(null);
+      uploadGroupRef.current = null;
     }
     onOpenChange(nextOpen);
   }

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { nicknameSchema, photoMetadataSchema } from "./api";
 
-const valid = { guestId: "20000000-0000-4000-8000-000000000001", clientUploadId: "40000000-0000-4000-8000-000000000001", cloudinaryPublicId: "weddings/event/originals/id", width: 1200, height: 1600, caption: " Una foto ", format: "jpg", bytes: 500_000, originalFilename: "photo.jpg" };
+const valid = { guestId: "20000000-0000-4000-8000-000000000001", clientUploadId: "40000000-0000-4000-8000-000000000001", uploadGroupId: "50000000-0000-4000-8000-000000000001", uploadGroupCreatedAt: "2026-09-20T10:00:00+02:00", uploadGroupPosition: 0, cloudinaryPublicId: "weddings/event/originals/id", width: 1200, height: 1600, caption: " Una foto ", format: "jpg", bytes: 500_000, originalFilename: "photo.jpg" };
 
 describe("photoMetadataSchema", () => {
   it("accepts valid metadata", () => expect(photoMetadataSchema.safeParse(valid).success).toBe(true));
@@ -9,6 +9,7 @@ describe("photoMetadataSchema", () => {
     expect(photoMetadataSchema.safeParse({ ...valid, format: "svg" }).success).toBe(false);
     expect(photoMetadataSchema.safeParse({ ...valid, bytes: 21 * 1024 * 1024 }).success).toBe(false);
     expect(photoMetadataSchema.safeParse({ ...valid, guestId: "not-a-uuid" }).success).toBe(false);
+    expect(photoMetadataSchema.safeParse({ ...valid, uploadGroupPosition: 4 }).success).toBe(false);
     expect(photoMetadataSchema.safeParse({ ...valid, caption: "x".repeat(301) }).success).toBe(false);
     expect(photoMetadataSchema.safeParse({ ...valid, caption: "<script>alert(1)</script>" }).success).toBe(false);
     expect(photoMetadataSchema.safeParse({ ...valid, unexpected: true }).success).toBe(false);

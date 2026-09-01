@@ -9,7 +9,7 @@ async function collect(extra = "") {
     const response = await fetch(`${baseUrl}/api/events/load-test-event/photos?limit=50${extra}${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ""}`);
     if (!response.ok) throw new Error(`Page ${pages + 1} failed with ${response.status}`);
     const body = await response.json();
-    ids.push(...body.items.map((item) => item.id));
+    ids.push(...body.items.flatMap((item) => item.photos.map((photo) => photo.id)));
     cursor = body.nextCursor || "";
     pages += 1;
   } while (cursor);

@@ -25,6 +25,14 @@ export type PhotoFeedItem = {
   guest: Guest;
 };
 
+export type PhotoPost = {
+  id: string;
+  createdAt: string;
+  caption: string | null;
+  guest: Guest;
+  photos: PhotoFeedItem[];
+};
+
 export type Photo = PhotoFeedItem;
 
 export type PaginatedResponse<T> = { items: T[]; nextCursor: string | null };

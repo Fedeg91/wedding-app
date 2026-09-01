@@ -43,6 +43,6 @@ export function uploadDirectToCloudinary(file: File, signed: UploadSignature, on
   });
 }
 
-export function persistUploadedPhoto(eventSlug: string, guestId: string, clientUploadId: string, result: CloudinaryUploadResult, caption: string) {
-  return withBoundedRetry(() => fetchJson<PhotoFeedItem>(`/api/events/${encodeURIComponent(eventSlug)}/photos`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ guestId, clientUploadId, cloudinaryPublicId: result.public_id, width: result.width, height: result.height, caption: caption.trim() || null, format: result.format, bytes: result.bytes, originalFilename: result.original_filename }), signal: timeoutSignal() }), 1, 400);
+export function persistUploadedPhoto(eventSlug: string, guestId: string, clientUploadId: string, uploadGroupId: string, uploadGroupCreatedAt: string, uploadGroupPosition: number, result: CloudinaryUploadResult, caption: string) {
+  return withBoundedRetry(() => fetchJson<PhotoFeedItem>(`/api/events/${encodeURIComponent(eventSlug)}/photos`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ guestId, clientUploadId, uploadGroupId, uploadGroupCreatedAt, uploadGroupPosition, cloudinaryPublicId: result.public_id, width: result.width, height: result.height, caption: caption.trim() || null, format: result.format, bytes: result.bytes, originalFilename: result.original_filename }), signal: timeoutSignal() }), 1, 400);
 }

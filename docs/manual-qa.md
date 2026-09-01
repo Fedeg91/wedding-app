@@ -14,7 +14,8 @@ Test primarily on a narrow iPhone-sized viewport, then repeat the core flow on A
 ## Uploads
 
 - [ ] One JPEG/PNG/WebP uploads, persists, and appears in the newest feed without reload.
-- [ ] Ten selected photos show overall progress and never exceed three simultaneous uploads.
+- [ ] Four selected photos show overall progress and never exceed three simultaneous uploads.
+- [ ] Publishing 2–4 photos creates one feed post with swipe, counter, dots and per-photo likes/fullscreen.
 - [ ] Queued photos can be removed before starting.
 - [ ] A failed photo shows its reason and retry action without blocking successful photos.
 - [ ] If metadata persistence fails after Cloudinary succeeds, retry saves metadata without uploading the binary again.

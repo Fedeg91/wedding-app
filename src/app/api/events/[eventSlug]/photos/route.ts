@@ -55,7 +55,7 @@ async function createPhotoHandler(request: Request, { params }: { params: Promis
     return apiError("INVALID_CLOUDINARY_ASSET", "Uploaded image could not be verified", 400);
   }
 
-  const { item, error } = await createPublishedPhoto({ eventId: event.id, guestId: parsed.data.guestId, clientUploadId: parsed.data.clientUploadId, cloudinaryPublicId: parsed.data.cloudinaryPublicId, width: parsed.data.width, height: parsed.data.height, caption: parsed.data.caption?.trim() || null, format: parsed.data.format, bytes: parsed.data.bytes, originalFilename: parsed.data.originalFilename?.trim() || null });
+  const { item, error } = await createPublishedPhoto({ eventId: event.id, guestId: parsed.data.guestId, clientUploadId: parsed.data.clientUploadId, uploadGroupId: parsed.data.uploadGroupId, uploadGroupCreatedAt: parsed.data.uploadGroupCreatedAt, uploadGroupPosition: parsed.data.uploadGroupPosition, cloudinaryPublicId: parsed.data.cloudinaryPublicId, width: parsed.data.width, height: parsed.data.height, caption: parsed.data.caption?.trim() || null, format: parsed.data.format, bytes: parsed.data.bytes, originalFilename: parsed.data.originalFilename?.trim() || null });
   if (error || !item) { logServerError("photo_metadata_persistence_failed", error, { eventSlug: slug.data, guestId: parsed.data.guestId, clientUploadId: parsed.data.clientUploadId }); return databaseError("persist uploaded photo", error); }
   return Response.json(item, { status: 201 });
 }

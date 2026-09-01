@@ -44,6 +44,9 @@ try {
     body: JSON.stringify({
       guestId,
       clientUploadId: randomUUID(),
+      uploadGroupId: randomUUID(),
+      uploadGroupCreatedAt: new Date().toISOString(),
+      uploadGroupPosition: 0,
       cloudinaryPublicId: uploaded.public_id,
       width: uploaded.width,
       height: uploaded.height,

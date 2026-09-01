@@ -15,6 +15,9 @@ export const uploadSignatureSchema = z.object({ guestId: uuidSchema }).strict();
 export const photoMetadataSchema = z.object({
   guestId: uuidSchema,
   clientUploadId: uuidSchema,
+  uploadGroupId: uuidSchema,
+  uploadGroupCreatedAt: z.iso.datetime({ offset: true }),
+  uploadGroupPosition: z.number().int().min(0).max(3),
   cloudinaryPublicId: z.string().min(1).max(255),
   width: z.number().int().positive(),
   height: z.number().int().positive(),
