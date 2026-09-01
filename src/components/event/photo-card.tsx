@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, Heart, Share2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import type { PhotoFeedItem, PhotoPost } from "@/types";
@@ -16,7 +16,6 @@ export function PhotoCard({ post, onOpen, onLike, pendingPhotoId }: { post: Phot
   const lastTapRef = useRef(0);
   const [heartBurst, setHeartBurst] = useState(false);
   const [showSwipeHint, setShowSwipeHint] = useState(false);
-  const [shareLabel, setShareLabel] = useState("Condividi");
   const active = post.photos[activeIndex] ?? post.photos[0];
   const frame = post.photos[0];
   const carousel = post.photos.length > 1;
@@ -39,13 +38,6 @@ export function PhotoCard({ post, onOpen, onLike, pendingPhotoId }: { post: Phot
     lastTapRef.current = now;
     window.setTimeout(() => { if (lastTapRef.current === now) { lastTapRef.current = 0; onOpen(photo); } }, 330);
   }
-  async function sharePost() {
-    const data = { title: `Foto di ${post.guest.nickname}`, text: post.caption || `Guarda questa foto di ${post.guest.nickname}`, url: `${window.location.href.split("#")[0]}#post-${post.id}` };
-    try {
-      if (navigator.share) await navigator.share(data);
-      else { await navigator.clipboard.writeText(data.url); setShareLabel("Link copiato"); window.setTimeout(() => setShareLabel("Condividi"), 1800); }
-    } catch (error) { if (error instanceof DOMException && error.name === "AbortError") return; }
-  }
   return <article id={`post-${post.id}`} className="scroll-mt-20 overflow-hidden bg-white sm:rounded-2xl sm:shadow-sm sm:ring-1 sm:ring-stone-200/70">
     <div className="flex items-center gap-3 px-4 py-3"><div className="flex size-9 items-center justify-center rounded-full bg-rose-100 text-sm font-bold uppercase text-rose-600">{post.guest.nickname.slice(0, 1)}</div><div><p className="text-sm font-semibold text-stone-800">{post.guest.nickname}</p><time className="text-xs text-stone-400" dateTime={post.createdAt}>{formatter.format(new Date(post.createdAt))}</time></div></div>
     <div className="relative overflow-hidden bg-stone-100" style={{ aspectRatio: `${frame.width ?? 1200}/${frame.height ?? 1200}` }}>
@@ -56,7 +48,7 @@ export function PhotoCard({ post, onOpen, onLike, pendingPhotoId }: { post: Phot
       {showSwipeHint && <div className="pointer-events-none absolute inset-x-0 bottom-10 z-20 flex justify-center"><span className="animate-pulse rounded-full bg-black/65 px-4 py-2 text-xs font-semibold text-white">Scorri per vedere le altre foto →</span></div>}
       {carousel && <><span className="absolute right-3 top-3 rounded-full bg-black/65 px-2.5 py-1 text-xs font-semibold text-white">{activeIndex + 1}/{post.photos.length}</span>{activeIndex > 0 && <button type="button" onClick={() => goTo(activeIndex - 1)} className="absolute left-2 top-1/2 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white sm:flex" aria-label="Foto precedente"><ChevronLeft /></button>}{activeIndex < post.photos.length - 1 && <button type="button" onClick={() => goTo(activeIndex + 1)} className="absolute right-2 top-1/2 hidden size-10 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white sm:flex" aria-label="Foto successiva"><ChevronRight /></button>}<div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">{post.photos.map((photo, index) => <span className={cn("size-1.5 rounded-full shadow", index === activeIndex ? "bg-white" : "bg-white/50")} key={photo.id} />)}</div></>}
     </div>
-    <div className="flex items-center justify-between px-3 pt-2"><button type="button" onClick={() => onLike(active)} disabled={pendingPhotoId === active.id} aria-pressed={active.likedByCurrentGuest} aria-label={active.likedByCurrentGuest ? "Rimuovi Mi piace" : "Metti Mi piace"} className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full px-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-rose-50 disabled:opacity-60"><Heart className={cn("size-6 transition-transform active:scale-125", active.likedByCurrentGuest && "fill-rose-500 text-rose-500")} /><span>{active.likeCount}</span></button><button type="button" onClick={() => void sharePost()} className="inline-flex min-h-11 items-center gap-2 rounded-full px-3 text-sm font-semibold text-stone-600 transition-colors hover:bg-stone-100" aria-label="Condividi questo post"><Share2 className="size-5" /><span>{shareLabel}</span></button></div>
+    <div className="px-3 pt-2"><button type="button" onClick={() => onLike(active)} disabled={pendingPhotoId === active.id} aria-pressed={active.likedByCurrentGuest} aria-label={active.likedByCurrentGuest ? "Rimuovi Mi piace" : "Metti Mi piace"} className="inline-flex min-h-11 min-w-11 items-center gap-2 rounded-full px-2 text-sm font-semibold text-stone-700 transition-colors hover:bg-rose-50 disabled:opacity-60"><Heart className={cn("size-6 transition-transform active:scale-125", active.likedByCurrentGuest && "fill-rose-500 text-rose-500")} /><span>{active.likeCount}</span></button></div>
     {post.caption && <p className="px-4 py-4 text-sm leading-relaxed text-stone-700"><span className="mr-2 font-semibold text-stone-900">{post.guest.nickname}</span>{post.caption}</p>}
   </article>;
 }

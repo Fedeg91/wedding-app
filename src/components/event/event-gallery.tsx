@@ -3,8 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowUp, Camera, Images, RefreshCw, WifiOff } from "lucide-react";
+import { ArrowUp, Camera, Images, RefreshCw, Trophy, WifiOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import { getGuestAward, markGuestAwardRead } from "@/features/awards/api";
 import { getEvent } from "@/features/events/api";
 import { changeGuestNickname, getGuests, registerGuest } from "@/features/guests/api";
 import { getPhotoPage, setPhotoLike } from "@/features/photos/api";
@@ -85,6 +87,18 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
     gcTime: 10 * 60_000,
     refetchOnMount: false,
   });
+  const awardQuery = useQuery({
+    queryKey: ["award", eventSlug, guest?.id],
+    queryFn: () => getGuestAward(eventSlug, guest!.id),
+    enabled: Boolean(guest && online),
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+    refetchOnWindowFocus: true,
+  });
+  const readAward = useMutation({
+    mutationFn: (awardId: string) => markGuestAwardRead(eventSlug, guest!.id, awardId),
+    onSuccess: () => queryClient.setQueryData(["award", eventSlug, guest?.id], { award: null }),
+  });
   const likes = useMutation({
     mutationFn: ({ photoId, liked }: { photoId: string; liked: boolean }) => setPhotoLike(eventSlug, photoId, guest!.id, liked),
     onMutate: async ({ photoId, liked }) => {
@@ -139,11 +153,19 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
         {photosQuery.isFetchNextPageError && <div className="px-4 py-5 text-center"><p className="text-sm text-stone-500">Non siamo riusciti a caricare altre foto.</p><Button className="mt-3" variant="outline" onClick={() => void photosQuery.fetchNextPage()}><RefreshCw className="size-4" />Riprova</Button></div>}
         <div ref={loadMoreRef} className="h-1" aria-hidden="true" />
       </main>
-      {showLatest && <Button variant="outline" className="fixed left-1/2 top-20 z-40 -translate-x-1/2 rounded-full bg-white/95 shadow-lg backdrop-blur" onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); void photosQuery.refetch(); }}><ArrowUp className="size-4" />Ultime foto</Button>}
+      {showLatest && <Button variant="outline" className="fixed right-3 top-20 z-40 min-h-9 rounded-full bg-white/95 px-3 text-xs shadow-md backdrop-blur" onClick={() => { window.scrollTo({ top: 0, behavior: "smooth" }); void photosQuery.refetch(); }}><ArrowUp className="size-3.5" />Ultime</Button>}
       {event.uploadEnabled ? <div className="safe-bottom pointer-events-none fixed inset-x-0 bottom-0 z-40 flex justify-center bg-linear-to-t from-[#faf9f7] via-[#faf9f7]/95 to-transparent px-4 pb-4 pt-8"><Button className="pointer-events-auto min-h-14 w-full max-w-sm text-base shadow-[0_10px_30px_rgba(244,63,94,0.28)]" onClick={() => setUploadOpen(true)}><Camera className="size-5" />Aggiungi foto</Button></div> : <div className="safe-bottom fixed inset-x-0 bottom-0 z-40 bg-[#faf9f7]/95 px-4 pb-4 pt-3 text-center text-sm text-stone-500 backdrop-blur">Gli sposi hanno disattivato nuovi caricamenti.</div>}
       <UploadSheet open={uploadOpen} onOpenChange={setUploadOpen} eventSlug={eventSlug} guestId={guest.id} onViewPost={() => { window.scrollTo({ top: 0, behavior: "smooth" }); void photosQuery.refetch(); }} />
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} guest={guest} onSave={saveNickname} />
       <PhotoLightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
+      <Dialog open={Boolean(awardQuery.data?.award)} onOpenChange={(open) => { const current = awardQuery.data?.award; if (!open && current && !readAward.isPending) readAward.mutate(current.id); }}>
+        <DialogContent className="text-center">
+          <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-amber-100 text-amber-600"><Trophy className="size-10" /></div>
+          <DialogTitle className="mt-4 font-serif text-3xl text-stone-900">Congratulazioni! 🎉</DialogTitle>
+          <DialogDescription className="mt-3 text-lg leading-relaxed text-stone-600">{awardQuery.data?.award?.message}</DialogDescription>
+          <Button className="mt-5 w-full" disabled={readAward.isPending} onClick={() => { const current = awardQuery.data?.award; if (current) readAward.mutate(current.id); }}>Ho visto, grazie!</Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -33,6 +33,15 @@ export type Database = {
           { foreignKeyName: "photo_likes_guest_id_fkey"; columns: ["guest_id"]; isOneToOne: false; referencedRelation: "guests"; referencedColumns: ["id"] },
         ];
       };
+      guest_awards: {
+        Row: { id: string; event_id: string; guest_id: string; message: string; read_at: string | null; created_at: string };
+        Insert: { id?: string; event_id: string; guest_id: string; message?: string; read_at?: string | null; created_at?: string };
+        Update: Partial<Database["public"]["Tables"]["guest_awards"]["Insert"]>;
+        Relationships: [
+          { foreignKeyName: "guest_awards_event_id_fkey"; columns: ["event_id"]; isOneToOne: false; referencedRelation: "events"; referencedColumns: ["id"] },
+          { foreignKeyName: "guest_awards_guest_event_fkey"; columns: ["guest_id", "event_id"]; isOneToOne: false; referencedRelation: "guests"; referencedColumns: ["id", "event_id"] },
+        ];
+      };
     };
     Views: Record<string, never>;
     Functions: {

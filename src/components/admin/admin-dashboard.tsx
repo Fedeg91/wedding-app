@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Upload,
   Users,
+  Trophy,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -26,7 +27,9 @@ import {
   getAdminPhotos,
   patchAdminEvent,
   patchAdminPhoto,
+  sendGuestAward,
 } from "@/features/admin/api";
+import { getGuests } from "@/features/guests/api";
 
 type StatusFilter = "all" | "published" | "hidden";
 type SortOrder = "newest" | "oldest" | "most_liked";
@@ -43,6 +46,8 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
   const queryClient = useQueryClient();
   const [status, setStatus] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortOrder>("newest");
+  const [awardGuestId, setAwardGuestId] = useState("");
+  const [awardMessage, setAwardMessage] = useState("Hai vinto un premio!");
   const moreRef = useRef<HTMLDivElement>(null);
   const eventQuery = useQuery({
     queryKey: ["admin-event", eventSlug],
@@ -56,6 +61,11 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (page) => page.nextCursor ?? undefined,
     staleTime: 10_000,
+  });
+  const guestsQuery = useQuery({ queryKey: ["guests", eventSlug], queryFn: () => getGuests(eventSlug), staleTime: 60_000 });
+  const award = useMutation({
+    mutationFn: () => sendGuestAward(eventSlug, awardGuestId, awardMessage),
+    onSuccess: () => setAwardMessage("Hai vinto un premio!"),
   });
   const controls = useMutation({
     mutationFn: (updates: {
@@ -190,6 +200,15 @@ export function AdminDashboard({ eventSlug }: { eventSlug: string }) {
             pending={controls.isPending}
             dangerous
           />
+        </section>
+        <section className="rounded-2xl bg-white p-5 shadow-sm">
+          <div className="flex items-center gap-3"><div className="flex size-10 items-center justify-center rounded-full bg-amber-100 text-amber-700"><Trophy className="size-5" /></div><div><h2 className="font-serif text-xl">Premio invitato</h2><p className="text-sm text-stone-500">Invia un messaggio privato a un singolo invitato.</p></div></div>
+          <div className="mt-4 grid gap-3 md:grid-cols-[1fr_2fr_auto]">
+            <select value={awardGuestId} onChange={(event) => setAwardGuestId(event.target.value)} className="min-h-11 rounded-xl border border-stone-200 bg-white px-3 text-sm" aria-label="Invitato destinatario"><option value="">Scegli invitato</option>{(guestsQuery.data?.items ?? []).map((item) => <option value={item.id} key={item.id}>{item.nickname}</option>)}</select>
+            <input value={awardMessage} onChange={(event) => setAwardMessage(event.target.value)} maxLength={160} className="min-h-11 rounded-xl border border-stone-200 px-3 text-sm" aria-label="Messaggio premio" />
+            <Button disabled={!awardGuestId || !awardMessage.trim() || award.isPending} onClick={() => award.mutate()}><Trophy className="size-4" />{award.isPending ? "Invio…" : "Invia premio"}</Button>
+          </div>
+          <p className={`mt-3 text-sm ${award.isError ? "text-red-600" : "text-emerald-700"}`} role="status">{award.isSuccess ? "Premio inviato: apparirà nell’app dell’invitato." : award.isError ? "Invio non riuscito. Riprova." : "Il messaggio sarà mostrato una sola volta e poi segnato come letto."}</p>
         </section>
         <section>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
