@@ -36,6 +36,10 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      list_public_photos_with_likes: {
+        Args: { target_event_id: string; target_guest_id?: string | null; target_current_guest_id?: string | null; sort_order?: string; page_limit?: number; cursor_created_at?: string | null; cursor_id?: string | null };
+        Returns: Array<{ id: string; mock_image_url: string | null; cloudinary_public_id: string | null; width: number | null; height: number | null; caption: string | null; created_at: string; guest_id: string; guest_nickname: string; like_count: number; liked_by_current_guest: boolean }>;
+      };
       list_admin_photos_with_likes: {
         Args: { target_event_id: string; status_filter: string; sort_order: string; page_limit: number; cursor_created_at?: string | null; cursor_id?: string | null; cursor_like_count?: number | null };
         Returns: Array<{ id: string; cloudinary_public_id: string | null; mock_image_url: string | null; caption: string | null; created_at: string; status: string; guest_id: string; guest_nickname: string; like_count: number }>;

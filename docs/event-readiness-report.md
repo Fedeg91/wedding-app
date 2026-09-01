@@ -2,6 +2,78 @@
 
 Audit date: 2026-09-01 (Europe/Rome)
 
+## Vercel production verification update
+
+**MEASURED on 2026-09-01** against `https://wedding-app-seven-sable.vercel.app`, using only the isolated `load-test-event` for writes. The production wedding event was used only by the reversible smoke test, which restored both controls in a `finally` block.
+
+The deployment is reachable and both the event page and event API returned HTTP 200. The observed `x-vercel-id` contained `fra1::iad1`, so function-region placement should be checked in Vercel; this may indicate a Europe ingress followed by execution in `iad1` and could materially increase Supabase round-trip latency.
+
+### Production realistic browsing
+
+The scenario includes event, guest list, three cursor pages, `currentGuestId` liked-state lookup and realistic pauses.
+
+| VUs | Requests | req/s | p50 | p95 | p99 | HTTP errors | 5xx | Result |
+|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 50 | 510 | 12.22 | 1,860 ms | 3,790 ms | 4,760 ms | 0.19% | 1 | FAIL |
+| 60 | 600 | 14.46 | 2,300 ms | 4,270 ms | 4,910 ms | 0% | 0 | FAIL latency |
+| 100 | 575 | 13.20 | 4,650 ms | 8,420 ms | 11,470 ms | 0% | 0 | FAIL latency |
+
+The one 5xx at 50 VUs means the strict zero-5xx threshold did not pass. Later 60/100 runs did not reproduce it, but the tail latency confirms saturation/queueing.
+
+### Production burst and write APIs
+
+| Scenario | p50 | p95 | p99 | HTTP errors / 5xx | Result |
+|---|---:|---:|---:|---:|---|
+| 101 QR arrivals over 15 s (303 requests) | 519 ms | 755 ms | 998 ms | 0% / 0 | Reliable, above preferred p95 |
+| 20 onboarding flows | 1,150 ms | 1,470 ms | 1,490 ms | 0% / 0 | Correct, slow |
+| 50 onboarding flows | 1,360 ms | 3,520 ms | 4,010 ms | 0% / 0 | Correct, slow |
+| 20 simultaneous likes | 1,000 ms | 1,920 ms | 2,050 ms | 0% / 0 | Correct, slow |
+| 50 simultaneous likes | 768 ms | 4,590 ms | 4,710 ms | 0% / 0 | Correct, slow |
+| 20 VU upload signatures | 564 ms | 1,160 ms | 1,230 ms | 0% / 0 | Correct, slow |
+| 50 VU upload signatures | 916 ms | 2,560 ms | 2,750 ms | 0% / 0 | Correct, slow |
+
+Seventy distinct concurrent likes produced exactly 70 rows/count. Repeating a like for the same additional guest increased the count by exactly one.
+
+### Production integration and smoke
+
+- Full 3,000-row cursor traversal: PASS newest, oldest and guest-filtered; no duplicates/skips.
+- Public page/event API: PASS.
+- Missing event and unauthenticated admin guard: PASS.
+- Admin login/logout and Secure/HttpOnly/SameSite cookie: PASS.
+- Upload/gallery switches disabled, enforced and restored: PASS.
+- Signed upload parameters: PASS.
+- One 68-byte real PNG: direct Cloudinary upload PASS, metadata persistence PASS, transformed `w_1000` feed delivery PASS; Cloudinary asset deleted afterward.
+- Local maximum batch: changed from 10 to **4**; network concurrency remains the safer **3**, leaving at most one queued. Unit test explicitly locks the batch limit at four.
+
+This production evidence reinforces the **NOT READY** verdict until region placement/database round trips are corrected and the realistic 50/60 tests are rerun successfully.
+
+## Feed consolidation and query-plan update
+
+**IMPLEMENTED and MEASURED on 2026-09-01; application deployment still required.**
+
+`list_public_photos_with_likes` now performs candidate keyset pagination, guest join, like count and current-guest liked state in one Supabase RPC. The public feed route no longer performs separate guest-validation and liked-ID requests. A normal real feed page is reduced from four database round trips (event, guest validation, feed, liked IDs) to two (event and consolidated feed RPC).
+
+Correctness against 3,000 synthetic rows:
+
+- newest: 3,000/3,000 unique over 60 pages;
+- oldest: 3,000/3,000 unique over 60 pages;
+- guest filter: 150/150 unique over 3 pages;
+- one inserted like returned `likeCount = 1` and `likedByCurrentGuest = true` from the RPC-backed API.
+
+`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)` findings on remote Supabase:
+
+| Query | Execution | Principal access path | Finding |
+|---|---:|---|---|
+| Public first page with likes | 0.569 ms | `photos_event_created_at_idx` | Correct index; 21 candidates limited before like work |
+| Deep cursor page | 0.182 ms | `photos_event_created_at_idx` | Correct keyset index scan |
+| Guest-filtered page | 0.395 ms | `photos_event_guest_created_at_idx` | Correct compound index scan |
+| Likes for 20-photo page | 0.131 ms | photo index + tiny likes table | No expensive aggregation |
+| Admin most-liked, 3,000 photos | 11.666 ms | indexed photos + grouped sort | Acceptable at wedding scale |
+
+Sequential scans appeared only for 20 synthetic guests and an almost-empty likes table; PostgreSQL correctly preferred them at that size. No additional index is justified by these plans. The service-role-only diagnostic function was removed immediately after capture; raw plans are retained locally in `.tools/query-plans.json`.
+
+A local optimized Next.js build using the remote database improved the 50-VU realistic browsing test from p50 1.61 s / p95 3.73 s / 13.62 req/s to **p50 405 ms / p95 1.97 s / 20.71 req/s**, with zero HTTP errors. This is a material improvement but still misses the latency target. The optimized application code must be deployed to Vercel and retested there before changing the readiness verdict.
+
 ## Verdict
 
 **NOT READY** for an unattended wedding release today.

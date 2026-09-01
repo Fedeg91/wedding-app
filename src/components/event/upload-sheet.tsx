@@ -95,7 +95,7 @@ export function UploadSheet({ open, onOpenChange, eventSlug, guestId }: { open: 
     <Dialog open={open} onOpenChange={close}>
       <DialogContent>
         <DialogTitle className="pr-12 font-serif text-2xl text-stone-900">Aggiungi le tue foto</DialogTitle>
-        <DialogDescription className="mt-1 text-sm text-stone-500">Fino a 10 immagini, massimo 20 MB ciascuna. La didascalia verrà applicata a tutte.</DialogDescription>
+        <DialogDescription className="mt-1 text-sm text-stone-500">Fino a {MAX_BATCH_SIZE} immagini, massimo 20 MB ciascuna. La didascalia verrà applicata a tutte.</DialogDescription>
         {items.length > 0 && <p className="mt-3 text-sm font-semibold text-stone-700" aria-live="polite">{successful} di {items.length} caricate{busy ? " · caricamento in corso" : ""}</p>}
         {!online && <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800" role="status">Sei offline. Le foto rimangono qui finché non torna la connessione.</p>}
         <div className="mt-5 max-h-[46dvh] space-y-2 overflow-y-auto">

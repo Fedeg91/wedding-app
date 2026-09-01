@@ -5,6 +5,7 @@ import { validateUploadFiles } from "./validation";
 function image(name: string, type = "image/jpeg", size = 10) { return new File([new Uint8Array(size)], name, { type }); }
 
 describe("validateUploadFiles", () => {
+  it("limits each batch to four photos", () => expect(MAX_BATCH_SIZE).toBe(4));
   it("accepts supported raster images", () => expect(validateUploadFiles([image("photo.jpg"), image("photo.webp", "image/webp")])).toEqual([]));
   it("rejects SVG and oversized files", () => {
     expect(validateUploadFiles([image("bad.svg", "image/svg+xml")])[0]?.message).toContain("Formato");

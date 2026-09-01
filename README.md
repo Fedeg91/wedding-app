@@ -78,7 +78,7 @@ Upload flow:
 3. browser posts returned metadata to the Next.js photo endpoint;
 4. Next.js verifies Cloudinary ownership and stores metadata in Supabase.
 
-The client accepts at most 10 files of 20 MB and runs at most 3 uploads concurrently. Client upload IDs make metadata retries idempotent.
+The client accepts at most 4 files of 20 MB per batch and runs at most 3 uploads concurrently. Client upload IDs make metadata retries idempotent.
 
 ## Vercel deployment
 

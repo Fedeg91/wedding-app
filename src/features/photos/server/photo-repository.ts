@@ -8,42 +8,27 @@ import { getCloudinaryEnv } from "@/lib/cloudinary/env";
 import { measureDatabase } from "@/lib/observability/request-context";
 
 type FeedOptions = { limit: number; guestId?: string; currentGuestId?: string; sort: "newest" | "oldest"; cursor?: PhotoCursor };
-type PhotoRow = { id: string; mock_image_url: string | null; cloudinary_public_id: string | null; width: number | null; height: number | null; caption: string | null; created_at: string; guests: { id: string; nickname: string } | null; photo_likes: Array<{ count: number }> };
+type PhotoRow = { id: string; mock_image_url: string | null; cloudinary_public_id: string | null; width: number | null; height: number | null; caption: string | null; created_at: string; guest_id: string; guest_nickname: string; like_count: number; liked_by_current_guest: boolean };
 
 export async function listPhotos(eventId: string, options: FeedOptions): Promise<{ page: PaginatedResponse<PhotoFeedItem> | null; error: unknown }> {
-  const ascending = options.sort === "oldest";
-  let query = getSupabaseServerClient()
-    .from("photos")
-    .select("id, mock_image_url, cloudinary_public_id, width, height, caption, created_at, guests!inner(id, nickname), photo_likes(count)")
-    .eq("event_id", eventId)
-    .eq("status", "published")
-    .order("created_at", { ascending })
-    .order("id", { ascending })
-    .limit(options.limit + 1);
-
-  if (options.guestId) query = query.eq("guest_id", options.guestId);
-  if (options.cursor) {
-    const comparison = ascending ? "gt" : "lt";
-    query = query.or(`created_at.${comparison}.${options.cursor.createdAt},and(created_at.eq.${options.cursor.createdAt},id.${comparison}.${options.cursor.id})`);
-  }
-
-  const { data, error } = await measureDatabase("photos.feed", () => query);
+  const { data, error } = await measureDatabase("photos.feed_rpc", () => getSupabaseServerClient().rpc("list_public_photos_with_likes", {
+    target_event_id: eventId,
+    target_guest_id: options.guestId ?? null,
+    target_current_guest_id: options.currentGuestId ?? null,
+    sort_order: options.sort,
+    page_limit: options.limit + 1,
+    cursor_created_at: options.cursor?.createdAt ?? null,
+    cursor_id: options.cursor?.id ?? null,
+  }));
   if (error) return { page: null, error };
   const rows = (data ?? []) as unknown as PhotoRow[];
   const hasMore = rows.length > options.limit;
   const visibleRows = rows.slice(0, options.limit);
-  const photoIds = visibleRows.map((row) => row.id);
-  const likedIds = new Set<string>();
-  if (options.currentGuestId && photoIds.length) {
-    const likes = await measureDatabase("photos.current_guest_likes", () => getSupabaseServerClient().from("photo_likes").select("photo_id").eq("guest_id", options.currentGuestId!).in("photo_id", photoIds));
-    if (likes.error) return { page: null, error: likes.error };
-    for (const like of likes.data ?? []) likedIds.add(like.photo_id);
-  }
   const cloudName = visibleRows.some((row) => row.cloudinary_public_id) ? getCloudinaryEnv().CLOUDINARY_CLOUD_NAME : null;
   const items = visibleRows.flatMap((row): PhotoFeedItem[] => {
     const imageUrl = row.cloudinary_public_id && cloudName ? buildCloudinaryImageUrl(cloudName, row.cloudinary_public_id, "feed") : row.mock_image_url;
     const fullscreenUrl = row.cloudinary_public_id && cloudName ? buildCloudinaryImageUrl(cloudName, row.cloudinary_public_id, "fullscreen") : imageUrl;
-    return imageUrl && fullscreenUrl && row.guests ? [{ id: row.id, imageUrl, fullscreenUrl, width: row.width, height: row.height, caption: row.caption, createdAt: row.created_at, likeCount: Number(row.photo_likes?.[0]?.count ?? 0), likedByCurrentGuest: likedIds.has(row.id), guest: row.guests }] : [];
+    return imageUrl && fullscreenUrl ? [{ id: row.id, imageUrl, fullscreenUrl, width: row.width, height: row.height, caption: row.caption, createdAt: row.created_at, likeCount: Number(row.like_count), likedByCurrentGuest: row.liked_by_current_guest, guest: { id: row.guest_id, nickname: row.guest_nickname } }] : [];
   });
   const last = visibleRows.at(-1);
   return { page: { items, nextCursor: hasMore && last ? encodeCursor({ createdAt: last.created_at, id: last.id }) : null }, error: null };

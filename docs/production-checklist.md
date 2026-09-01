@@ -32,7 +32,7 @@ Last local audit: 2026-08-16. Check an item only after it has been verified agai
 - [x] Limits are 10 files, 20 MB each and 3 concurrent uploads.
 - [ ] Confirm the 20 MB server-side account/preset limit in the Cloudinary Console. The Admin API returns formats/overwrite but does not expose `max_file_size`; the app still rejects larger selections and metadata.
 - [ ] Upload one real photo in production and verify it appears in the feed.
-- [ ] Select 10 photos and verify 3 uploading / 7 queued, retry and partial failure.
+- [ ] Select 4 photos and verify 3 uploading / 1 queued, retry and partial failure.
 - [ ] Confirm the browser Network panel sends binary data only to `api.cloudinary.com`.
 
 ## Admin and event controls

@@ -26,17 +26,6 @@ async function getPhotosHandler(request: Request, { params }: { params: Promise<
   const cursor = parsed.data.cursor ? decodeCursor(parsed.data.cursor) : undefined;
   if (parsed.data.cursor && !cursor) return apiError("INVALID_CURSOR", "Malformed pagination cursor", 400);
 
-  if (parsed.data.guestId) {
-    const guest = await guestBelongsToEvent(event.id, parsed.data.guestId);
-    if (guest.error) return databaseError("validate photo guest", guest.error);
-    if (!guest.exists) return apiError("INVALID_GUEST", "Guest does not belong to this event", 400);
-  }
-  if (parsed.data.currentGuestId) {
-    const guest = await guestBelongsToEvent(event.id, parsed.data.currentGuestId);
-    if (guest.error) return databaseError("validate current photo guest", guest.error);
-    if (!guest.exists) return apiError("INVALID_GUEST", "Guest does not belong to this event", 400);
-  }
-
   const { page, error } = await listPhotos(event.id, { limit: parsed.data.limit, guestId: parsed.data.guestId, currentGuestId: parsed.data.currentGuestId, sort: parsed.data.sort, cursor: cursor ?? undefined });
   if (error || !page) return databaseError("list photos", error);
   return Response.json(page);
