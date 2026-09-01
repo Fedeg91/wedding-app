@@ -439,12 +439,12 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
       {showLatest && (
         <Button
           variant="outline"
-          className="fixed right-3 top-20 z-40 min-h-9 rounded-full bg-white/95 px-3 text-xs shadow-md backdrop-blur"
+          className="fixed right-2 top-[8.5rem] z-40 min-h-7 rounded-full bg-white/95 px-2 py-1 text-[10px] shadow-sm backdrop-blur"
           onClick={() => {
             window.scrollTo({ top: 0, behavior: "smooth" });
             void photosQuery.refetch();
           }}>
-          <ArrowUp className="size-3.5" />
+          <ArrowUp className="size-3" />
           Ultime
         </Button>
       )}
