@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/features/admin/auth/guard";
-import { createGuestAward, listAdminGuestAwards, markGuestAwardDelivered } from "@/features/awards/server/award-repository";
+import { createGuestAward, listAdminGuestAwards, markGuestAwardDelivered, resendGuestAward } from "@/features/awards/server/award-repository";
 import { findEventBySlug } from "@/features/events/server/event-repository";
 import { guestBelongsToEvent } from "@/features/guests/server/guest-repository";
 import { apiError, databaseError, invalidInput } from "@/lib/api/errors";
@@ -37,9 +37,10 @@ async function deliverAwardHandler(request: Request, { params }: { params: Promi
   const resolved = await resolveAdminEvent((await params).eventSlug); if (!resolved.event) return resolved.response!;
   const body = await readJsonBody(request, 1024); if (body.response) return body.response;
   const parsed = adminAwardDeliverySchema.safeParse(body.data); if (!parsed.success) return invalidInput(parsed.error);
-  const result = await markGuestAwardDelivered(resolved.event.id, parsed.data.awardId); if (result.error) return databaseError("deliver award", result.error);
-  if (!result.found) return apiError("INVALID_INPUT", "Award is not awaiting delivery", 409);
-  return Response.json({ delivered: true });
+  const result = parsed.data.action === "resend" ? await resendGuestAward(resolved.event.id, parsed.data.awardId) : await markGuestAwardDelivered(resolved.event.id, parsed.data.awardId);
+  if (result.error) return databaseError(parsed.data.action === "resend" ? "resend award" : "deliver award", result.error);
+  if (!result.found) return apiError("INVALID_INPUT", "Award cannot be updated", 409);
+  return Response.json({ updated: true });
 }
 
 export const GET = withApiObservability("admin.awards.list", listAwardsHandler);

@@ -13,7 +13,7 @@ export const adminPhotoQuerySchema = z.object({ limit: z.coerce.number().int().m
 export const photoLikeSchema = z.object({ guestId: uuidSchema }).strict();
 export const adminAwardSchema = z.object({ guestId: uuidSchema, message: z.string().trim().min(1).max(160).refine(plainText, "Message must be plain text").default("Hai vinto un premio!") }).strict();
 export const awardReadSchema = z.object({ awardId: uuidSchema, action: z.enum(["dismiss", "claim"]) }).strict();
-export const adminAwardDeliverySchema = z.object({ awardId: uuidSchema }).strict();
+export const adminAwardDeliverySchema = z.object({ awardId: uuidSchema, action: z.enum(["deliver", "resend"]) }).strict();
 export const uploadSignatureSchema = z.object({ guestId: uuidSchema }).strict();
 export const photoMetadataSchema = z.object({
   guestId: uuidSchema,

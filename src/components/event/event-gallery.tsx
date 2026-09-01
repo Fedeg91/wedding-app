@@ -39,9 +39,11 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
   const [online, setOnline] = useState(true);
   const [showLatest, setShowLatest] = useState(false);
   const [audioReady, setAudioReady] = useState(false);
+  const [snoozedAwardId, setSnoozedAwardId] = useState<string | null>(null);
   const loadMoreRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   const soundedAwardRef = useRef<string | null>(null);
+  const awardSnoozeTimerRef = useRef<number | null>(null);
 
   const eventQuery = useQuery({ queryKey: ["event", eventSlug], queryFn: () => getEvent(eventSlug), staleTime: 5_000, gcTime: 10 * 60_000, refetchOnWindowFocus: true, refetchInterval: 30_000 });
   const guestsQuery = useQuery({ queryKey: ["guests", eventSlug], queryFn: () => getGuests(eventSlug), enabled: eventQuery.isSuccess, staleTime: 60_000, gcTime: 10 * 60_000 });
@@ -58,6 +60,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
     window.addEventListener("pointerdown", unlock);
     return () => { window.removeEventListener("pointerdown", unlock); void audioContextRef.current?.close(); audioContextRef.current = null; };
   }, []);
+  useEffect(() => () => { if (awardSnoozeTimerRef.current) window.clearTimeout(awardSnoozeTimerRef.current); }, []);
 
   useEffect(() => {
     const hydrate = window.setTimeout(() => {
@@ -179,7 +182,7 @@ export function EventGallery({ eventSlug }: { eventSlug: string }) {
       <UploadSheet open={uploadOpen} onOpenChange={setUploadOpen} eventSlug={eventSlug} guestId={guest.id} onViewPost={() => { window.scrollTo({ top: 0, behavior: "smooth" }); void photosQuery.refetch(); }} />
       <ProfileSheet open={profileOpen} onOpenChange={setProfileOpen} guest={guest} onSave={saveNickname} />
       <PhotoLightbox photo={selectedPhoto} onClose={() => setSelectedPhoto(null)} />
-      <Dialog open={Boolean(awardQuery.data?.award)} onOpenChange={(open) => { const current = awardQuery.data?.award; if (!open && current && !readAward.isPending) readAward.mutate({ awardId: current.id, action: "dismiss" }); }}>
+      <Dialog open={Boolean(awardQuery.data?.award && awardQuery.data.award.id !== snoozedAwardId)} onOpenChange={(open) => { const current = awardQuery.data?.award; if (!open && current && !readAward.isPending) { setSnoozedAwardId(current.id); if (awardSnoozeTimerRef.current) window.clearTimeout(awardSnoozeTimerRef.current); awardSnoozeTimerRef.current = window.setTimeout(() => setSnoozedAwardId(null), 60_000); } }}>
         <DialogContent className="text-center">
           <div className="mx-auto flex size-20 items-center justify-center rounded-full bg-amber-100 text-amber-600"><Trophy className="size-10" /></div>
           <DialogTitle className="mt-4 font-serif text-3xl text-stone-900">Congratulazioni! 🎉</DialogTitle>

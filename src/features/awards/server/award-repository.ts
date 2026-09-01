@@ -31,3 +31,8 @@ export async function markGuestAwardDelivered(eventId: string, awardId: string):
   const { data, error } = await measureDatabase("awards.delivered", () => getSupabaseServerClient().from("guest_awards").update({ delivered_at: new Date().toISOString() }).eq("id", awardId).eq("event_id", eventId).not("claimed_at", "is", null).is("delivered_at", null).select("id").maybeSingle());
   return { found: Boolean(data), error };
 }
+
+export async function resendGuestAward(eventId: string, awardId: string): Promise<{ found: boolean; error: unknown }> {
+  const { data, error } = await measureDatabase("awards.resend", () => getSupabaseServerClient().from("guest_awards").update({ read_at: null, claimed_at: null, created_at: new Date().toISOString() }).eq("id", awardId).eq("event_id", eventId).is("delivered_at", null).select("id").maybeSingle());
+  return { found: Boolean(data), error };
+}
